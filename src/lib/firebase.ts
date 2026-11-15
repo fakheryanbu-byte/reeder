@@ -1,7 +1,11 @@
 import { initializeApp } from 'firebase/app';
 import {
+  createUserWithEmailAndPassword,
   getAuth,
   GoogleAuthProvider,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
   type User,
@@ -32,6 +36,32 @@ export async function signInWithGoogle(): Promise<void> {
   }
 }
 
+export async function signInHotelWithEmail(email: string, password: string): Promise<void> {
+  await signInWithEmailAndPassword(auth, email.trim(), password);
+}
+
+export async function registerHotelWithEmail(email: string, password: string): Promise<void> {
+  await createUserWithEmailAndPassword(auth, email.trim(), password);
+}
+
+export async function resetHotelPassword(email: string): Promise<void> {
+  await sendPasswordResetEmail(auth, email.trim());
+}
+
+export async function sendCurrentUserVerificationEmail(): Promise<void> {
+  if (!auth.currentUser) {
+    throw new Error('Not signed in.');
+  }
+  await sendEmailVerification(auth.currentUser);
+}
+
+export async function refreshCurrentUser(): Promise<User | null> {
+  if (!auth.currentUser) return null;
+  await auth.currentUser.reload();
+  await auth.currentUser.getIdToken(true);
+  return auth.currentUser;
+}
+
 export function formatFirebaseAuthError(err: unknown): string | null {
   const code =
     typeof err === 'object' && err !== null && 'code' in err
@@ -53,6 +83,52 @@ export function formatFirebaseAuthError(err: unknown): string | null {
       return `This domain (${currentHost}) is not authorized in Firebase Authentication yet. Add "${currentHost}" in Firebase Console → Authentication → Settings → Authorized domains (Project: ${firebaseConfig.projectId}).`;
     }
     return `هذا النطاق (${currentHost}) غير مضاف في النطاقات المصرح بها داخل Firebase. افتح Firebase Console ← Authentication ← Settings ← Authorized domains للمشروع (${firebaseConfig.projectId}) وأضف النطاق: ${currentHost}`;
+  }
+
+  if (code === 'auth/operation-not-allowed') {
+    return isEn
+      ? 'Email/Password sign-in is not enabled yet in Firebase Console → Authentication → Sign-in method.'
+      : 'تسجيل الدخول بالبريد الإلكتروني وكلمة المرور غير مفعّل بعد في Firebase Console ← Authentication ← Sign-in method.';
+  }
+
+  if (code === 'auth/email-already-in-use') {
+    return isEn
+      ? 'This email is already registered. Please sign in instead.'
+      : 'هذا البريد الإلكتروني مسجل مسبقاً. يرجى اختيار تسجيل الدخول.';
+  }
+
+  if (
+    code === 'auth/invalid-credential' ||
+    code === 'auth/wrong-password' ||
+    code === 'auth/user-not-found'
+  ) {
+    return isEn
+      ? 'Incorrect email or password.'
+      : 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+  }
+
+  if (code === 'auth/weak-password') {
+    return isEn
+      ? 'Password is too weak. Please enter at least 6 characters.'
+      : 'كلمة المرور قصيرة جداً؛ يجب أن تتكون من 6 أحرف أو أرقام على الأقل.';
+  }
+
+  if (code === 'auth/invalid-email') {
+    return isEn
+      ? 'Please enter a valid email address.'
+      : 'يرجى إدخال بريد إلكتروني صحيح.';
+  }
+
+  if (code === 'auth/too-many-requests') {
+    return isEn
+      ? 'Too many attempts. Please wait a moment and try again.'
+      : 'تم تجاوز عدد المحاولات المسموح بها مؤقتاً. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.';
+  }
+
+  if (code === 'auth/network-request-failed') {
+    return isEn
+      ? 'Network error. Please check your internet connection.'
+      : 'تعذر الاتصال بالخادم. يرجى التحقق من اتصال الإنترنت.';
   }
 
   return rawMsg || (isEn ? 'Sign-in failed.' : 'تعذر تسجيل الدخول.');

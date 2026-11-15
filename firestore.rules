@@ -163,9 +163,9 @@ service cloud.firestore {
     match /hotels/{hotelId} {
       // Guest QR pages read a specific hotel by ID; listing is strictly limited to owner or admin.
       allow get: if isValidId(hotelId);
-      allow list: if isAdmin() || (isVerifiedUser() && resource.data.ownerUid == request.auth.uid);
+      allow list: if isAdmin() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
 
-      allow create: if isVerifiedUser()
+      allow create: if isSignedIn()
         && isValidId(hotelId)
         && isValidHotel(incoming(), hotelId)
         && incoming().ownerUid == request.auth.uid
@@ -176,7 +176,7 @@ service cloud.firestore {
         && incoming().updatedAt == request.time
         && existsAfter(/databases/$(database)/documents/hotels/$(hotelId)/private/info);
 
-      allow update: if isVerifiedUser()
+      allow update: if isSignedIn()
         && isValidId(hotelId)
         && isValidHotel(incoming(), hotelId)
         && incoming().id == existing().id
@@ -193,11 +193,11 @@ service cloud.firestore {
       match /private/{docId} {
         allow get: if isValidId(hotelId)
           && docId == 'info'
-          && (isAdmin() || (isVerifiedUser() && get(/databases/$(database)/documents/hotels/$(hotelId)).data.ownerUid == request.auth.uid));
+          && (isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/hotels/$(hotelId)).data.ownerUid == request.auth.uid));
 
         allow list: if false;
 
-        allow create: if isVerifiedUser()
+        allow create: if isSignedIn()
           && isValidId(hotelId)
           && docId == 'info'
           && isValidHotelPrivate(incoming(), hotelId)
@@ -205,7 +205,7 @@ service cloud.firestore {
           && incoming().updatedAt == request.time
           && getAfter(/databases/$(database)/documents/hotels/$(hotelId)).data.ownerUid == request.auth.uid;
 
-        allow update: if isVerifiedUser()
+        allow update: if isSignedIn()
           && isValidId(hotelId)
           && docId == 'info'
           && isValidHotelPrivate(incoming(), hotelId)
@@ -222,7 +222,7 @@ service cloud.firestore {
     match /checkin_sessions/{sessionId} {
       // Guest devices subscribe to their own unguessable UUID session document; collection listing is strictly hotel-owner or admin.
       allow get: if isValidId(sessionId);
-      allow list: if isAdmin() || (isVerifiedUser() && resource.data.hotelOwnerUid == request.auth.uid);
+      allow list: if isAdmin() || (isSignedIn() && resource.data.hotelOwnerUid == request.auth.uid);
 
       allow create: if isValidId(sessionId)
         && isValidCheckinSession(incoming(), sessionId)
@@ -241,7 +241,7 @@ service cloud.firestore {
         && incoming().hotelOwnerUid == get(/databases/$(database)/documents/hotels/$(incoming().hotelId)).data.ownerUid
         && incoming().hotelName == get(/databases/$(database)/documents/hotels/$(incoming().hotelId)).data.name;
 
-      allow update: if isVerifiedUser()
+      allow update: if isSignedIn()
         && isValidId(sessionId)
         && isValidCheckinSession(incoming(), sessionId)
         && (isAdmin() || existing().hotelOwnerUid == request.auth.uid)
@@ -263,7 +263,7 @@ service cloud.firestore {
         && incoming().hotelName == existing().hotelName
         && incoming().hotelOwnerUid == existing().hotelOwnerUid;
 
-      allow delete: if (isAdmin() || (isVerifiedUser() && existing().hotelOwnerUid == request.auth.uid)) && isValidId(sessionId);
+      allow delete: if (isAdmin() || (isSignedIn() && existing().hotelOwnerUid == request.auth.uid)) && isValidId(sessionId);
     }
 
     match /admins/{adminUid} {

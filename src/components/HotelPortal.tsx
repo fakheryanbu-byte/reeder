@@ -16,6 +16,8 @@ import {
   Copy,
   Download,
   ExternalLink,
+  Eye,
+  EyeOff,
   FileText,
   KeyRound,
   Loader2,
@@ -31,10 +33,17 @@ import {
   Save,
   Search,
   Send,
+  UserPlus,
   Volume2,
 } from 'lucide-react';
 import type { TranslationKeys } from '../i18n/ar';
-import { auth, formatFirebaseAuthError, signInWithGoogle } from '../lib/firebase';
+import {
+  auth,
+  formatFirebaseAuthError,
+  registerHotelWithEmail,
+  resetHotelPassword,
+  signInHotelWithEmail,
+} from '../lib/firebase';
 import {
   approveCheckinSession,
   subscribeToHotelCheckinSessions,
@@ -73,7 +82,14 @@ export function HotelPortal({
 }: HotelPortalProps) {
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [authReady, setAuthReady] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'register'>('signin');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authConfirmPassword, setAuthConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   const [hotels, setHotels] = useState<HotelWithPrivate[]>([]);
@@ -219,11 +235,34 @@ export function HotelPortal({
     return () => unsub();
   }, [user, activeHotel]);
 
-  const handleSignIn = async () => {
-    setSigningIn(true);
+  const handleEmailAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setAuthError(null);
+    setResetSent(false);
+
+    const cleanEmail = authEmail.trim();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setAuthError(t.hotelErrEmailInvalid);
+      return;
+    }
+    if (authPassword.length < 6) {
+      setAuthError(t.hotelAuthErrPasswordShort);
+      return;
+    }
+    if (authMode === 'register' && authPassword !== authConfirmPassword) {
+      setAuthError(t.hotelAuthErrPasswordMismatch);
+      return;
+    }
+
+    setSigningIn(true);
     try {
-      await signInWithGoogle();
+      if (authMode === 'register') {
+        await registerHotelWithEmail(cleanEmail, authPassword);
+      } else {
+        await signInHotelWithEmail(cleanEmail, authPassword);
+      }
+      setAuthPassword('');
+      setAuthConfirmPassword('');
     } catch (err) {
       const formatted = formatFirebaseAuthError(err);
       if (formatted) {
@@ -231,6 +270,28 @@ export function HotelPortal({
       }
     } finally {
       setSigningIn(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setAuthError(null);
+    setResetSent(false);
+    const cleanEmail = authEmail.trim();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setAuthError(t.hotelErrEmailInvalid);
+      return;
+    }
+    setSendingReset(true);
+    try {
+      await resetHotelPassword(cleanEmail);
+      setResetSent(true);
+    } catch (err) {
+      const formatted = formatFirebaseAuthError(err);
+      if (formatted) {
+        setAuthError(formatted);
+      }
+    } finally {
+      setSendingReset(false);
     }
   };
 
@@ -470,39 +531,195 @@ export function HotelPortal({
 
   if (!user) {
     return (
-      <section className="mx-auto max-w-lg rounded-3xl border border-[#2C2C2C]/10 bg-[#FAF7F2] p-6 text-center shadow-[var(--shadow-card)] sm:p-8">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#C58B6D]/30 bg-[#E8A588]/20 text-[#8C5338]">
-          <Building2 className="h-7 w-7" aria-hidden="true" />
-        </div>
-        <h2 className="text-xl font-bold text-[#2C2C2C] sm:text-2xl">
-          {t.hotelSignInTitle}
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-[#685F58]">
-          {t.hotelSignInDesc}
-        </p>
-
-        {authError && (
-          <div
-            role="alert"
-            className="mt-4 rounded-xl border border-[#9E3B33]/30 bg-[#9E3B33]/10 px-3.5 py-2.5 text-xs font-medium text-[#9E3B33]"
-          >
-            {authError}
+      <section className="mx-auto max-w-md rounded-3xl border border-[#2C2C2C]/10 bg-[#FAF7F2] p-6 shadow-[var(--shadow-card)] sm:p-8">
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#C58B6D]/30 bg-[#E8A588]/20 text-[#8C5338]">
+            <Building2 className="h-7 w-7" aria-hidden="true" />
           </div>
-        )}
+          <h2 className="text-xl font-bold text-[#2C2C2C] sm:text-2xl">
+            {t.hotelSignInTitle}
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-[#685F58]">
+            {t.hotelSignInDesc}
+          </p>
+        </div>
 
-        <button
-          type="button"
-          onClick={handleSignIn}
-          disabled={signingIn}
-          className="mt-6 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-[#2C2C2C] px-5 py-3 text-sm font-bold text-[#FAF7F2] transition-all hover:bg-[#2C2C2C]/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C58B6D] disabled:opacity-60"
-        >
-          {signingIn ? (
-            <Loader2 className="h-4 w-4 animate-spin text-[#E8A588]" aria-hidden="true" />
-          ) : (
-            <LogIn className="h-4 w-4 text-[#E8A588]" aria-hidden="true" />
+        {/* Mode Toggle: Sign In vs Create Account */}
+        <div className="mt-5 grid grid-cols-2 rounded-2xl bg-[#F4EFEA] p-1">
+          <button
+            type="button"
+            onClick={() => {
+              setAuthMode('signin');
+              setAuthError(null);
+              setResetSent(false);
+            }}
+            className={`min-h-[42px] rounded-xl px-3 py-2 text-xs font-bold transition-all sm:text-sm ${
+              authMode === 'signin'
+                ? 'bg-[#FFFFFF] text-[#2C2C2C] shadow-sm'
+                : 'text-[#685F58] hover:text-[#2C2C2C]'
+            }`}
+          >
+            {t.hotelAuthTabSignIn}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAuthMode('register');
+              setAuthError(null);
+              setResetSent(false);
+            }}
+            className={`min-h-[42px] rounded-xl px-3 py-2 text-xs font-bold transition-all sm:text-sm ${
+              authMode === 'register'
+                ? 'bg-[#FFFFFF] text-[#2C2C2C] shadow-sm'
+                : 'text-[#685F58] hover:text-[#2C2C2C]'
+            }`}
+          >
+            {t.hotelAuthTabRegister}
+          </button>
+        </div>
+
+        <form onSubmit={handleEmailAuthSubmit} className="mt-5 space-y-4">
+          <div>
+            <label
+              htmlFor="hotel-auth-email"
+              className="mb-1.5 block text-sm font-semibold text-[#2C2C2C]"
+            >
+              {t.hotelAuthEmailLabel}
+              <span className="ms-1 text-[#8C5338]">{t.requiredMark}</span>
+            </label>
+            <input
+              id="hotel-auth-email"
+              type="email"
+              dir="ltr"
+              autoComplete="email"
+              value={authEmail}
+              onChange={(e) => {
+                setAuthEmail(e.target.value);
+                setAuthError(null);
+              }}
+              placeholder={t.hotelAuthEmailPlaceholder}
+              className="ltr-field min-h-[48px] w-full rounded-xl border border-[#2C2C2C]/15 bg-[#FFFFFF] px-3.5 py-2.5 text-sm text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="hotel-auth-password"
+              className="mb-1.5 block text-sm font-semibold text-[#2C2C2C]"
+            >
+              {t.hotelAuthPasswordLabel}
+              <span className="ms-1 text-[#8C5338]">{t.requiredMark}</span>
+            </label>
+            <div className="relative">
+              <input
+                id="hotel-auth-password"
+                type={showPassword ? 'text' : 'password'}
+                dir="ltr"
+                autoComplete={authMode === 'register' ? 'new-password' : 'current-password'}
+                value={authPassword}
+                onChange={(e) => {
+                  setAuthPassword(e.target.value);
+                  setAuthError(null);
+                }}
+                placeholder={t.hotelAuthPasswordPlaceholder}
+                className="ltr-field min-h-[48px] w-full rounded-xl border border-[#2C2C2C]/15 bg-[#FFFFFF] pe-11 ps-3.5 py-2.5 text-sm text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="absolute inset-y-0 end-0 flex w-11 items-center justify-center text-[#685F58] hover:text-[#2C2C2C]"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Eye className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {authMode === 'register' && (
+            <div>
+              <label
+                htmlFor="hotel-auth-confirm-password"
+                className="mb-1.5 block text-sm font-semibold text-[#2C2C2C]"
+              >
+                {t.hotelAuthConfirmPasswordLabel}
+                <span className="ms-1 text-[#8C5338]">{t.requiredMark}</span>
+              </label>
+              <input
+                id="hotel-auth-confirm-password"
+                type={showPassword ? 'text' : 'password'}
+                dir="ltr"
+                autoComplete="new-password"
+                value={authConfirmPassword}
+                onChange={(e) => {
+                  setAuthConfirmPassword(e.target.value);
+                  setAuthError(null);
+                }}
+                placeholder={t.hotelAuthConfirmPasswordPlaceholder}
+                className="ltr-field min-h-[48px] w-full rounded-xl border border-[#2C2C2C]/15 bg-[#FFFFFF] px-3.5 py-2.5 text-sm text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
+              />
+            </div>
           )}
-          <span>{signingIn ? t.adminSigningIn : t.hotelSignInButton}</span>
-        </button>
+
+          {authError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-xl border border-[#9E3B33]/30 bg-[#9E3B33]/10 px-3.5 py-2.5 text-xs font-medium text-[#9E3B33] sm:text-sm"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{authError}</span>
+            </div>
+          )}
+
+          {resetSent && (
+            <div
+              role="status"
+              className="flex items-start gap-2 rounded-xl border border-[#2E6B47]/30 bg-[#2E6B47]/10 px-3.5 py-2.5 text-xs font-medium text-[#2E6B47] sm:text-sm"
+            >
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{t.hotelAuthResetSent}</span>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={signingIn}
+            className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-[#2C2C2C] px-5 py-3 text-sm font-bold text-[#FAF7F2] transition-all hover:bg-[#2C2C2C]/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C58B6D] disabled:opacity-60"
+          >
+            {signingIn ? (
+              <Loader2 className="h-4 w-4 animate-spin text-[#E8A588]" aria-hidden="true" />
+            ) : authMode === 'register' ? (
+              <UserPlus className="h-4 w-4 text-[#E8A588]" aria-hidden="true" />
+            ) : (
+              <LogIn className="h-4 w-4 text-[#E8A588]" aria-hidden="true" />
+            )}
+            <span>
+              {signingIn
+                ? authMode === 'register'
+                  ? t.hotelAuthCreatingAccount
+                  : t.hotelAuthSigningIn
+                : authMode === 'register'
+                  ? t.hotelAuthCreateAccountButton
+                  : t.hotelSignInButton}
+            </span>
+          </button>
+
+          {authMode === 'signin' && (
+            <div className="text-center">
+              <button
+                type="button"
+                disabled={sendingReset}
+                onClick={handleForgotPassword}
+                className="inline-flex min-h-[36px] items-center justify-center rounded-lg px-3 text-xs font-semibold text-[#8C5338] hover:underline disabled:opacity-50"
+              >
+                {sendingReset ? '...' : t.hotelAuthForgotPassword}
+              </button>
+            </div>
+          )}
+        </form>
       </section>
     );
   }
