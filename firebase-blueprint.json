@@ -1,0 +1,237 @@
+{
+  "entities": {
+    "Hotel": {
+      "title": "Hotel",
+      "description": "Public/QR-accessible hotel registration status record without PII.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique hotel identifier matching the Firestore document ID and ?hotel= QR parameter.",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Hotel display name.",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "ownerUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the hotel account owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "status": {
+          "type": "string",
+          "description": "Approval and operational status managed by the app owner.",
+          "enum": ["pending", "approved", "suspended"]
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether the hotel QR check-in page is currently active."
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Subscription expiration timestamp, or null while pending initial approval."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the hotel registered."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the hotel status or profile was last updated."
+        }
+      },
+      "required": ["id", "name", "ownerUid", "status", "isActive", "expiresAt", "createdAt", "updatedAt"]
+    },
+    "HotelPrivate": {
+      "title": "Hotel Private Contact Info",
+      "description": "Isolated PII subcollection storing the hotel's contact email and reception mobile number.",
+      "type": "object",
+      "properties": {
+        "hotelId": {
+          "type": "string",
+          "description": "Parent hotel ID.",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the hotel owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Contact email entered in the hotel registration form.",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "ownerEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified Google account email of the hotel owner.",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "receptionPhone": {
+          "type": "string",
+          "description": "Reception WhatsApp/mobile number in digits-only international format.",
+          "minLength": 7,
+          "maxLength": 25,
+          "pattern": "^[0-9]+$"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when contact info was saved."
+        }
+      },
+      "required": ["hotelId", "ownerUid", "email", "ownerEmail", "receptionPhone", "updatedAt"]
+    },
+    "CheckinSession": {
+      "title": "Check-in Session",
+      "description": "Real-time guest self check-in session synchronized between the guest device and the hotel portal.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique unguessable UUID session identifier matching the Firestore document ID.",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "hotelId": {
+          "type": "string",
+          "description": "Target hotel identifier referencing /hotels/{hotelId}.",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "hotelName": {
+          "type": "string",
+          "description": "Display name of the target hotel.",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "hotelOwnerUid": {
+          "type": "string",
+          "description": "Owner UID of the target hotel for secure list queries.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "guestName": {
+          "type": "string",
+          "description": "Full name of the primary guest.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "nationality": {
+          "type": "string",
+          "description": "Nationality of the guest.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "passportData": {
+          "type": "object",
+          "description": "Structured ID/passport and booking fields extracted via Gemini and reviewed by the guest."
+        },
+        "status": {
+          "type": "string",
+          "description": "Current workflow state of the check-in session.",
+          "enum": ["pending", "approved"]
+        },
+        "roomNumber": {
+          "type": "string",
+          "description": "Assigned room number entered by the hotel upon approval, or null while pending.",
+          "maxLength": 40
+        },
+        "welcomeMessage": {
+          "type": "string",
+          "description": "Custom welcome message entered by the hotel upon approval, or null while pending.",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the check-in session was created."
+        },
+        "approvedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the hotel approved the check-in, or null while pending."
+        }
+      },
+      "required": [
+        "id",
+        "hotelId",
+        "hotelName",
+        "hotelOwnerUid",
+        "guestName",
+        "nationality",
+        "passportData",
+        "status",
+        "roomNumber",
+        "welcomeMessage",
+        "createdAt",
+        "approvedAt"
+      ]
+    },
+    "AdminUser": {
+      "title": "App Owner / Admin User",
+      "description": "Authorized app owner account allowed to approve, suspend, renew, and delete hotels.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified Google account email.",
+          "maxLength": 200
+        },
+        "addedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when admin access was granted."
+        }
+      },
+      "required": ["uid", "email", "addedAt"]
+    }
+  },
+  "firestore": {
+    "/hotels/{hotelId}": {
+      "schema": "Hotel",
+      "description": "Public/QR-accessible hotel records without PII."
+    },
+    "/hotels/{hotelId}/private/{docId}": {
+      "schema": "HotelPrivate",
+      "description": "Isolated PII subcollection for hotel contact email and reception mobile number."
+    },
+    "/checkin_sessions/{sessionId}": {
+      "schema": "CheckinSession",
+      "description": "Collection of real-time guest self check-in sessions."
+    },
+    "/admins/{adminUid}": {
+      "schema": "AdminUser",
+      "description": "Authorized app owner accounts."
+    }
+  }
+}

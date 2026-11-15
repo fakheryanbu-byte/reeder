@@ -1,0 +1,282 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: deny all reads and writes by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 2 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser()
+        && request.auth.token.email.lower() == 'fakheryanbu@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerifiedUser()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidOptionalStr(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
+    function isValidHotel(data, hotelId) {
+      return data.keys().hasAll(['id', 'name', 'ownerUid', 'status', 'isActive', 'expiresAt', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'ownerUid', 'status', 'isActive', 'expiresAt', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id == hotelId && isValidId(data.id)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 150
+        && data.ownerUid is string && isValidId(data.ownerUid)
+        && data.status is string && data.status in ['pending', 'approved', 'suspended']
+        && data.isActive is bool
+        && (data.expiresAt == null || data.expiresAt is timestamp)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidHotelPrivate(data, hotelId) {
+      return data.keys().hasAll(['hotelId', 'ownerUid', 'email', 'ownerEmail', 'receptionPhone', 'updatedAt'])
+        && data.keys().hasOnly(['hotelId', 'ownerUid', 'email', 'ownerEmail', 'receptionPhone', 'updatedAt'])
+        && data.hotelId is string && data.hotelId == hotelId && isValidId(data.hotelId)
+        && data.ownerUid is string && isValidId(data.ownerUid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.ownerEmail is string && data.ownerEmail.size() >= 3 && data.ownerEmail.size() <= 200
+        && data.receptionPhone is string && data.receptionPhone.size() >= 7 && data.receptionPhone.size() <= 25 && data.receptionPhone.matches('^[0-9]+$')
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPassportData(pd) {
+      return pd is map
+        && pd.keys().hasAll([
+          'documentType',
+          'documentNumber',
+          'dateOfBirth',
+          'mobileNumber',
+          'purposeOfVisit',
+          'bookingSource'
+        ])
+        && pd.keys().hasOnly([
+          'documentType',
+          'documentNumber',
+          'sex',
+          'dateOfBirth',
+          'birthCalendar',
+          'expiryDate',
+          'expiryCalendar',
+          'versionNumber',
+          'borderNumber',
+          'borderNumberUnknown',
+          'mobileNumber',
+          'familyMembers',
+          'primaryMemberId',
+          'accompanyingMemberIds',
+          'purposeOfVisit',
+          'otherPurposeDetail',
+          'bookingSource',
+          'bookingReference'
+        ])
+        && pd.documentType is string && pd.documentType in ['national_id', 'iqama', 'passport', 'family_register', 'unknown']
+        && pd.documentNumber is string && pd.documentNumber.size() >= 1 && pd.documentNumber.size() <= 80
+        && (!('sex' in pd) || isValidOptionalStr(pd.sex, 20))
+        && pd.dateOfBirth is string && pd.dateOfBirth.size() >= 1 && pd.dateOfBirth.size() <= 40
+        && (!('birthCalendar' in pd) || (pd.birthCalendar is string && pd.birthCalendar in ['hijri', 'gregorian', 'unknown']))
+        && (!('expiryDate' in pd) || isValidOptionalStr(pd.expiryDate, 40))
+        && (!('expiryCalendar' in pd) || (pd.expiryCalendar is string && pd.expiryCalendar in ['hijri', 'gregorian', 'unknown']))
+        && (!('versionNumber' in pd) || isValidOptionalStr(pd.versionNumber, 40))
+        && (!('borderNumber' in pd) || isValidOptionalStr(pd.borderNumber, 80))
+        && (!('borderNumberUnknown' in pd) || pd.borderNumberUnknown is bool)
+        && pd.mobileNumber is string && pd.mobileNumber.size() >= 6 && pd.mobileNumber.size() <= 30
+        && (!('familyMembers' in pd) || (pd.familyMembers is list && pd.familyMembers.size() <= 25 && (pd.familyMembers.size() == 0 || pd.familyMembers[0] is map)))
+        && (!('primaryMemberId' in pd) || pd.primaryMemberId == null || isValidOptionalStr(pd.primaryMemberId, 128))
+        && (!('accompanyingMemberIds' in pd) || (pd.accompanyingMemberIds is list && pd.accompanyingMemberIds.size() <= 25 && (pd.accompanyingMemberIds.size() == 0 || pd.accompanyingMemberIds[0] is string)))
+        && pd.purposeOfVisit is string && pd.purposeOfVisit.size() >= 1 && pd.purposeOfVisit.size() <= 40
+        && (!('otherPurposeDetail' in pd) || isValidOptionalStr(pd.otherPurposeDetail, 200))
+        && pd.bookingSource is string && pd.bookingSource.size() >= 1 && pd.bookingSource.size() <= 40
+        && (!('bookingReference' in pd) || isValidOptionalStr(pd.bookingReference, 100));
+    }
+
+    function isValidCheckinSession(data, sessionId) {
+      return data.keys().hasAll([
+          'id',
+          'hotelId',
+          'hotelName',
+          'hotelOwnerUid',
+          'guestName',
+          'nationality',
+          'passportData',
+          'status',
+          'roomNumber',
+          'welcomeMessage',
+          'createdAt',
+          'approvedAt'
+        ])
+        && data.keys().hasOnly([
+          'id',
+          'hotelId',
+          'hotelName',
+          'hotelOwnerUid',
+          'guestName',
+          'nationality',
+          'passportData',
+          'status',
+          'roomNumber',
+          'welcomeMessage',
+          'createdAt',
+          'approvedAt'
+        ])
+        && data.id is string && data.id == sessionId && isValidId(data.id)
+        && data.hotelId is string && isValidId(data.hotelId)
+        && data.hotelName is string && data.hotelName.size() >= 1 && data.hotelName.size() <= 150
+        && data.hotelOwnerUid is string && isValidId(data.hotelOwnerUid)
+        && data.guestName is string && data.guestName.size() >= 1 && data.guestName.size() <= 200
+        && data.nationality is string && data.nationality.size() >= 1 && data.nationality.size() <= 120
+        && data.status is string && data.status in ['pending', 'approved']
+        && (data.roomNumber == null || (data.roomNumber is string && data.roomNumber.size() >= 1 && data.roomNumber.size() <= 40))
+        && (data.welcomeMessage == null || (data.welcomeMessage is string && data.welcomeMessage.size() >= 1 && data.welcomeMessage.size() <= 500))
+        && data.createdAt is timestamp
+        && (data.approvedAt == null || data.approvedAt is timestamp)
+        && isValidPassportData(data.passportData);
+    }
+
+    match /hotels/{hotelId} {
+      // Guest QR pages read a specific hotel by ID; listing is strictly limited to owner or admin.
+      allow get: if isValidId(hotelId);
+      allow list: if isAdmin() || (isVerifiedUser() && resource.data.ownerUid == request.auth.uid);
+
+      allow create: if isVerifiedUser()
+        && isValidId(hotelId)
+        && isValidHotel(incoming(), hotelId)
+        && incoming().ownerUid == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().isActive == false
+        && incoming().expiresAt == null
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && existsAfter(/databases/$(database)/documents/hotels/$(hotelId)/private/info);
+
+      allow update: if isVerifiedUser()
+        && isValidId(hotelId)
+        && isValidHotel(incoming(), hotelId)
+        && incoming().id == existing().id
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isActive', 'expiresAt', 'updatedAt']))
+          || (existing().ownerUid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'updatedAt']))
+        );
+
+      allow delete: if isAdmin() && isValidId(hotelId);
+
+      match /private/{docId} {
+        allow get: if isValidId(hotelId)
+          && docId == 'info'
+          && (isAdmin() || (isVerifiedUser() && get(/databases/$(database)/documents/hotels/$(hotelId)).data.ownerUid == request.auth.uid));
+
+        allow list: if false;
+
+        allow create: if isVerifiedUser()
+          && isValidId(hotelId)
+          && docId == 'info'
+          && isValidHotelPrivate(incoming(), hotelId)
+          && incoming().ownerUid == request.auth.uid
+          && incoming().updatedAt == request.time
+          && getAfter(/databases/$(database)/documents/hotels/$(hotelId)).data.ownerUid == request.auth.uid;
+
+        allow update: if isVerifiedUser()
+          && isValidId(hotelId)
+          && docId == 'info'
+          && isValidHotelPrivate(incoming(), hotelId)
+          && incoming().hotelId == existing().hotelId
+          && incoming().ownerUid == existing().ownerUid
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'receptionPhone', 'updatedAt'])
+          && (isAdmin() || get(/databases/$(database)/documents/hotels/$(hotelId)).data.ownerUid == request.auth.uid);
+
+        allow delete: if isAdmin() && isValidId(hotelId) && docId == 'info';
+      }
+    }
+
+    match /checkin_sessions/{sessionId} {
+      // Guest devices subscribe to their own unguessable UUID session document; collection listing is strictly hotel-owner or admin.
+      allow get: if isValidId(sessionId);
+      allow list: if isAdmin() || (isVerifiedUser() && resource.data.hotelOwnerUid == request.auth.uid);
+
+      allow create: if isValidId(sessionId)
+        && isValidCheckinSession(incoming(), sessionId)
+        && incoming().status == 'pending'
+        && incoming().roomNumber == null
+        && incoming().welcomeMessage == null
+        && incoming().approvedAt == null
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/hotels/$(incoming().hotelId))
+        && get(/databases/$(database)/documents/hotels/$(incoming().hotelId)).data.status == 'approved'
+        && get(/databases/$(database)/documents/hotels/$(incoming().hotelId)).data.isActive == true
+        && (
+          get(/databases/$(database)/documents/hotels/$(incoming().hotelId)).data.expiresAt == null
+          || get(/databases/$(database)/documents/hotels/$(incoming().hotelId)).data.expiresAt > request.time
+        )
+        && incoming().hotelOwnerUid == get(/databases/$(database)/documents/hotels/$(incoming().hotelId)).data.ownerUid
+        && incoming().hotelName == get(/databases/$(database)/documents/hotels/$(incoming().hotelId)).data.name;
+
+      allow update: if isVerifiedUser()
+        && isValidId(sessionId)
+        && isValidCheckinSession(incoming(), sessionId)
+        && (isAdmin() || existing().hotelOwnerUid == request.auth.uid)
+        && (isAdmin() || existing().status == 'pending')
+        && incoming().status == 'approved'
+        && incoming().roomNumber is string
+        && incoming().roomNumber.size() >= 1
+        && incoming().roomNumber.size() <= 40
+        && incoming().welcomeMessage is string
+        && incoming().welcomeMessage.size() >= 1
+        && incoming().welcomeMessage.size() <= 500
+        && incoming().approvedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'roomNumber', 'welcomeMessage', 'approvedAt'])
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().guestName == existing().guestName
+        && incoming().nationality == existing().nationality
+        && incoming().hotelId == existing().hotelId
+        && incoming().hotelName == existing().hotelName
+        && incoming().hotelOwnerUid == existing().hotelOwnerUid;
+
+      allow delete: if (isAdmin() || (isVerifiedUser() && existing().hotelOwnerUid == request.auth.uid)) && isValidId(sessionId);
+    }
+
+    match /admins/{adminUid} {
+      allow get: if isValidId(adminUid) && (isBootstrappedAdmin() || (isVerifiedUser() && request.auth.uid == adminUid));
+      allow list: if isBootstrappedAdmin();
+      allow create: if isValidId(adminUid)
+        && isBootstrappedAdmin()
+        && incoming().keys().hasAll(['uid', 'email', 'addedAt'])
+        && incoming().keys().hasOnly(['uid', 'email', 'addedAt'])
+        && incoming().uid is string && incoming().uid == adminUid
+        && incoming().email is string && incoming().email.size() >= 3 && incoming().email.size() <= 200
+        && incoming().addedAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(adminUid) && isBootstrappedAdmin();
+    }
+  }
+}

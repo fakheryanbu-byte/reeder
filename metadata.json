@@ -1,0 +1,10 @@
+{
+  "name": "بيانات نزيل 2",
+  "description": "Mobile-first bilingual Arabic/English app to scan guest ID documents with Google Gemini and prepare check-in details for hotel reception via WhatsApp.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
