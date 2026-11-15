@@ -3,11 +3,6 @@ import {
   validateIncomingImages,
 } from './geminiDocumentParser.ts';
 
-function sanitizeWhatsAppNumber(raw: string | undefined | null): string {
-  if (!raw) return '';
-  return raw.replace(/[^\d]/g, '');
-}
-
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 15;
 
@@ -24,12 +19,6 @@ export function isRateLimited(ip: string, now = Date.now()): boolean {
   timestamps.push(now);
   requestLogByIp.set(ip, timestamps);
   return false;
-}
-
-export function getConfiguredWhatsAppNumber(): string {
-  return sanitizeWhatsAppNumber(
-    process.env.RECEPTION_WHATSAPP_NUMBER || process.env.VITE_RECEPTION_WHATSAPP_NUMBER
-  );
 }
 
 export function resolveGeminiApiKey(): string {

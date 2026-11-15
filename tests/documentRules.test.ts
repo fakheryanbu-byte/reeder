@@ -769,5 +769,33 @@ describe('Hotels Portal & QR Check-in helpers', () => {
     expect(msg).toContain('الفندق / Hotel: فندق لؤلؤة البحر');
     expect(msg).toContain('رقم الغرفة / Room number: 305');
   });
+
+  it('requires hotel terms acceptance in Hotel QR mode while keeping general WhatsApp mode unaffected', () => {
+    const form = {
+      ...createEmptyGuestForm(),
+      fullName: 'فهد عبدالعزيز السبيعي',
+      documentType: 'national_id' as const,
+      documentNumber: '1022334455',
+      nationality: 'سعودي',
+      dateOfBirth: '1410/02/15',
+      birthCalendar: 'hijri' as const,
+      versionNumber: '02',
+      mobileNumber: '+966501234567',
+      purposeOfVisit: 'tourism' as const,
+      bookingSource: 'reception' as const,
+    };
+
+    const generalValid = validateGuestRequest(form, true);
+    expect(generalValid.canOpenWhatsApp).toBe(true);
+    expect(generalValid.missingRequiredFields).not.toContain('hotelTerms');
+
+    const hotelMissingTerms = validateGuestRequest(form, true, true, false);
+    expect(hotelMissingTerms.canOpenWhatsApp).toBe(false);
+    expect(hotelMissingTerms.missingRequiredFields).toContain('hotelTerms');
+
+    const hotelAcceptedTerms = validateGuestRequest(form, true, true, true);
+    expect(hotelAcceptedTerms.canOpenWhatsApp).toBe(true);
+    expect(hotelAcceptedTerms.missingRequiredFields).not.toContain('hotelTerms');
+  });
 });
 

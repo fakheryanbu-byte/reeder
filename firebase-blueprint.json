@@ -48,6 +48,11 @@
           "type": "string",
           "format": "date-time",
           "description": "Server timestamp when the hotel status or profile was last updated."
+        },
+        "termsText": {
+          "type": "string",
+          "description": "Hotel-specific check-in terms and policies editable by the hotel owner.",
+          "maxLength": 4000
         }
       },
       "required": ["id", "name", "ownerUid", "status", "isActive", "expiresAt", "createdAt", "updatedAt"]

@@ -2,10 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  getConfiguredWhatsAppNumber,
-  handleAnalyzeDocumentRequest,
-} from './server/apiHandlers.ts';
+import { handleAnalyzeDocumentRequest } from './server/apiHandlers.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,9 +28,7 @@ export function createApp() {
 
   app.get('/api/config', (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
-    res.json({
-      whatsappNumber: getConfiguredWhatsAppNumber(),
-    });
+    res.json({ ok: true });
   });
 
   app.post('/api/analyze-document', async (req, res) => {

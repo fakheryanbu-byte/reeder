@@ -23,6 +23,18 @@ import { normalizeHotelPhoneToWhatsApp } from '../utils/documentRules';
 
 export const HOTELS_COLLECTION = 'hotels';
 
+export const DEFAULT_HOTEL_TERMS_AR = `1. الالتزام بمواعيد تسجيل الدخول والمغادرة المعتمدة لدى الفندق.
+2. إبراز أصل الهوية الوطنية أو الإقامة أو جواز السفر عند الاستقبال لمطابقة البيانات.
+3. المحافظة على الهدوء العام ومرافق الغرفة وعدم إتلاف الممتلكات.
+4. يُمنع التدخين داخل الغرف غير المخصصة للتدخين وفق أنظمة الفندق.
+5. يتحمل النزيل مسؤولية المرافقين والالتزام بسياسات الإلغاء والتمديد المعتمدة.`;
+
+export const DEFAULT_HOTEL_TERMS_EN = `1. Guests must adhere to the hotel's standard check-in and check-out times.
+2. Original National ID, Iqama, or Passport must be presented at reception for verification.
+3. Guests are expected to maintain quiet hours and take care of room furnishings and hotel property.
+4. Smoking is prohibited inside non-smoking rooms in accordance with hotel regulations.
+5. The primary guest is responsible for accompanying guests and adhering to extension and cancellation policies.`;
+
 function parseTimestamp(raw: unknown): Date | null {
   if (raw instanceof Timestamp) return raw.toDate();
   if (
@@ -49,6 +61,7 @@ function mapSnapshotToHotel(id: string, data: DocumentData): HotelRecord {
     expiresAt: parseTimestamp(data.expiresAt),
     createdAt: parseTimestamp(data.createdAt),
     updatedAt: parseTimestamp(data.updatedAt),
+    termsText: typeof data.termsText === 'string' ? data.termsText : '',
   };
 }
 
@@ -76,6 +89,7 @@ export async function registerHotel(params: {
   email: string;
   ownerUid: string;
   ownerEmail: string;
+  termsText?: string;
 }): Promise<HotelWithPrivate> {
   const cleanName = params.name.trim().slice(0, 150);
   if (!cleanName) {
@@ -93,6 +107,7 @@ export async function registerHotel(params: {
   }
 
   const cleanOwnerEmail = params.ownerEmail.trim().slice(0, 200) || cleanEmail;
+  const cleanTermsText = (params.termsText ?? '').trim().slice(0, 4000);
   const id = generateHotelId();
   const path = `${HOTELS_COLLECTION}/${id}`;
 
@@ -103,6 +118,7 @@ export async function registerHotel(params: {
     status: 'pending' as const,
     isActive: false,
     expiresAt: null,
+    termsText: cleanTermsText,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -129,6 +145,7 @@ export async function registerHotel(params: {
       status: 'pending',
       isActive: false,
       expiresAt: null,
+      termsText: cleanTermsText,
       createdAt: new Date(),
       updatedAt: new Date(),
       email: cleanEmail,
@@ -284,6 +301,22 @@ export async function reactivateHotel(hotelId: string): Promise<void> {
     await updateDoc(doc(db, HOTELS_COLLECTION, hotelId), {
       status: 'approved',
       isActive: true,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+export async function updateHotelTerms(
+  hotelId: string,
+  termsText: string
+): Promise<void> {
+  const path = `${HOTELS_COLLECTION}/${hotelId}`;
+  const cleanTerms = termsText.trim().slice(0, 4000);
+  try {
+    await updateDoc(doc(db, HOTELS_COLLECTION, hotelId), {
+      termsText: cleanTerms,
       updatedAt: serverTimestamp(),
     });
   } catch (error) {

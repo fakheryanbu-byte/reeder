@@ -13,6 +13,7 @@ export interface HotelRecord {
   expiresAt: Date | null;
   createdAt: Date | null;
   updatedAt: Date | null;
+  termsText?: string;
 }
 
 export interface HotelPrivateInfo {
@@ -142,6 +143,7 @@ export interface LockedFormFields {
 export type ValidationFieldKey =
   | keyof GuestFormData
   | 'declaration'
+  | 'hotelTerms'
   | 'accompanyingMemberBirthDates'
   | 'accompanyingMemberNames';
 

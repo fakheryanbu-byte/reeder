@@ -24,7 +24,7 @@ export const en: TranslationKeys = {
   retakePhoto: 'Read again',
   deletePhoto: 'Remove',
   addBackSide: 'Read back side / extra page',
-  geminiConsentLabel: 'I agree to automatically read document details to fill the form without saving the image.',
+  geminiConsentLabel: 'I agree to read document details and fill out the form.',
   analyzeNowButton: 'Extract Details Now',
   readingDocument: 'Reading document...',
   readingComplete: 'Data has been read',
@@ -150,6 +150,11 @@ export const en: TranslationKeys = {
   validationMissingHeader: 'Please complete the following before continuing:',
   incompleteBorderNotice:
     'Note: Your request will be sent marked as "Missing data" because the border number is unavailable; reception will assist you.',
+  guestHotelTermsTitle: 'Facility Terms & Policies',
+  guestReadTermsButton: 'Read Facility Terms & Policies',
+  guestHideTermsButton: 'Hide Terms',
+  guestHotelTermsCheckbox: 'I have read the facility terms and policies and agree to them',
+  guestHotelTermsRequired: 'Agreeing to the facility terms and policies',
 
   // Guest QR Check-in Status
   qrHotelBannerLabel: 'Checking in at:',
@@ -240,6 +245,15 @@ export const en: TranslationKeys = {
   hotelPurposeLabel: 'Purpose',
   hotelBookingLabel: 'Booking source',
   hotelCompanionsLabel: 'Accompanying guests:',
+  hotelTermsSectionTitle: 'Hotel Terms & Policies',
+  hotelTermsSectionDesc:
+    'Customize your hotel check-in terms and policies; guests will read and agree to them before submitting their request.',
+  hotelTermsInputLabel: 'Hotel stay terms and policies',
+  hotelTermsPlaceholder: 'Enter hotel policies (check-in/out times, smoking policy, cancellation rules, etc.)...',
+  hotelTermsSaveButton: 'Save Terms',
+  hotelTermsSavingButton: 'Saving terms...',
+  hotelTermsSavedSuccess: 'Hotel terms and policies have been saved.',
+  hotelTermsResetDefault: 'Use default template',
 
   // App Owner Dashboard
   ownerDashboardTitle: 'App Owner Hotel Management',

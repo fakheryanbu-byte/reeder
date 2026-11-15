@@ -17,6 +17,7 @@ import {
   Copy,
   Download,
   ExternalLink,
+  FileText,
   KeyRound,
   Loader2,
   LogIn,
@@ -27,6 +28,8 @@ import {
   Phone,
   Plus,
   QrCode,
+  RotateCcw,
+  Save,
   Search,
   Send,
   Volume2,
@@ -37,7 +40,13 @@ import {
   approveCheckinSession,
   subscribeToHotelCheckinSessions,
 } from '../services/checkinSessions';
-import { registerHotel, subscribeToOwnerHotels } from '../services/hotels';
+import {
+  DEFAULT_HOTEL_TERMS_AR,
+  DEFAULT_HOTEL_TERMS_EN,
+  registerHotel,
+  subscribeToOwnerHotels,
+  updateHotelTerms,
+} from '../services/hotels';
 import type {
   CheckinSessionRecord,
   HotelWithPrivate,
@@ -77,8 +86,15 @@ export function HotelPortal({
   const [regName, setRegName] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regEmail, setRegEmail] = useState('');
+  const [regTerms, setRegTerms] = useState('');
   const [regSubmitting, setRegSubmitting] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
+
+  // Hotel terms editor state
+  const [termsDraft, setTermsDraft] = useState('');
+  const [savingTerms, setSavingTerms] = useState(false);
+  const [termsSavedMsg, setTermsSavedMsg] = useState(false);
+  const syncedTermsHotelRef = useRef<{ id: string; terms: string } | null>(null);
 
   // QR & Link state
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -145,6 +161,24 @@ export function HotelPortal({
 
   const hotelIsOperational = activeHotel ? isHotelOperational(activeHotel) : false;
   const hotelIsExpired = activeHotel ? isHotelExpired(activeHotel) : false;
+  const defaultTermsTemplate = lang === 'en' ? DEFAULT_HOTEL_TERMS_EN : DEFAULT_HOTEL_TERMS_AR;
+
+  // Sync hotel terms editor draft when switching hotel or when backend terms update
+  useEffect(() => {
+    if (!activeHotel) {
+      syncedTermsHotelRef.current = null;
+      setTermsDraft('');
+      setTermsSavedMsg(false);
+      return;
+    }
+    const serverTerms = activeHotel.termsText ?? '';
+    const prevSync = syncedTermsHotelRef.current;
+    if (!prevSync || prevSync.id !== activeHotel.id || prevSync.terms !== serverTerms) {
+      syncedTermsHotelRef.current = { id: activeHotel.id, terms: serverTerms };
+      setTermsDraft(serverTerms.trim() ? serverTerms : defaultTermsTemplate);
+      setTermsSavedMsg(false);
+    }
+  }, [activeHotel, defaultTermsTemplate]);
 
   // Render crisp QR code onto canvas whenever activeHotel is operational
   useEffect(() => {
@@ -232,15 +266,40 @@ export function HotelPortal({
         email: regEmail,
         ownerUid: user.uid,
         ownerEmail: user.email ?? regEmail,
+        termsText: regTerms.trim() ? regTerms : defaultTermsTemplate,
       });
       setRegName('');
       setRegPhone('');
+      setRegTerms('');
       setSelectedHotelId(created.id);
       setShowRegisterForm(false);
     } catch (err) {
       setRegError(err instanceof Error ? err.message : 'Failed to register hotel.');
     } finally {
       setRegSubmitting(false);
+    }
+  };
+
+  const handleSaveTerms = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeHotel) return;
+    setSavingTerms(true);
+    setTermsSavedMsg(false);
+    setActionError(null);
+    try {
+      await updateHotelTerms(activeHotel.id, termsDraft);
+      syncedTermsHotelRef.current = {
+        id: activeHotel.id,
+        terms: termsDraft.trim().slice(0, 4000),
+      };
+      setTermsSavedMsg(true);
+      setTimeout(() => setTermsSavedMsg(false), 3000);
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : 'Failed to save hotel terms.'
+      );
+    } finally {
+      setSavingTerms(false);
     }
   };
 
@@ -547,6 +606,34 @@ export function HotelPortal({
           />
         </div>
 
+        <div>
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+            <label
+              htmlFor="hotel-reg-terms"
+              className="block text-sm font-semibold text-[#2C2C2C]"
+            >
+              {t.hotelTermsInputLabel}
+            </label>
+            <button
+              type="button"
+              onClick={() => setRegTerms(defaultTermsTemplate)}
+              className="inline-flex min-h-[32px] items-center gap-1 rounded-lg border border-[#2C2C2C]/15 bg-[#F4EFEA] px-2.5 py-1 text-xs font-semibold text-[#8C5338] hover:bg-[#E8A588]/20"
+            >
+              <RotateCcw className="h-3 w-3" aria-hidden="true" />
+              <span>{t.hotelTermsResetDefault}</span>
+            </button>
+          </div>
+          <textarea
+            id="hotel-reg-terms"
+            rows={4}
+            value={regTerms}
+            onChange={(e) => setRegTerms(e.target.value)}
+            placeholder={t.hotelTermsPlaceholder}
+            maxLength={4000}
+            className="w-full rounded-xl border border-[#2C2C2C]/15 bg-[#FFFFFF] px-3.5 py-2.5 text-sm leading-relaxed text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
+          />
+        </div>
+
         {regError && (
           <div
             role="alert"
@@ -732,67 +819,138 @@ export function HotelPortal({
       {/* Approved & Active Dedicated Hotel Page: Reception QR + Real-Time Guest Requests */}
       {activeHotel.status === 'approved' && (
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12">
-          {/* Left/Top Column: Dedicated Reception QR Code */}
+          {/* Left/Top Column: Dedicated Reception QR Code & Hotel Terms Editor */}
           {hotelIsOperational && (
-            <section className="rounded-3xl border border-[#2C2C2C]/10 bg-[#FAF7F2] p-5 shadow-[var(--shadow-card)] sm:p-6 lg:sticky lg:top-20 lg:col-span-4">
-              <div className="flex items-center gap-2">
-                <QrCode className="h-5 w-5 text-[#8C5338]" aria-hidden="true" />
-                <h3 className="text-lg font-bold text-[#2C2C2C]">{t.hotelQrTitle}</h3>
-              </div>
-              <p className="mt-1.5 text-xs leading-relaxed text-[#685F58] sm:text-sm">
-                {t.hotelQrDesc}
-              </p>
+            <div className="space-y-5 lg:sticky lg:top-20 lg:col-span-4">
+              <section className="rounded-3xl border border-[#2C2C2C]/10 bg-[#FAF7F2] p-5 shadow-[var(--shadow-card)] sm:p-6">
+                <div className="flex items-center gap-2">
+                  <QrCode className="h-5 w-5 text-[#8C5338]" aria-hidden="true" />
+                  <h3 className="text-lg font-bold text-[#2C2C2C]">{t.hotelQrTitle}</h3>
+                </div>
+                <p className="mt-1.5 text-xs leading-relaxed text-[#685F58] sm:text-sm">
+                  {t.hotelQrDesc}
+                </p>
 
-              <div className="my-5 flex justify-center rounded-2xl border border-[#2C2C2C]/10 bg-[#FFFFFF] p-5">
-                <canvas ref={qrCanvasRef} className="max-w-full" />
-              </div>
+                <div className="my-5 flex justify-center rounded-2xl border border-[#2C2C2C]/10 bg-[#FFFFFF] p-5">
+                  <canvas ref={qrCanvasRef} className="max-w-full" />
+                </div>
 
-              <div className="mb-4 rounded-xl border border-[#2C2C2C]/10 bg-[#F4EFEA]/80 px-3 py-2 text-xs">
-                <span className="ltr-field block break-all font-mono text-[#2C2C2C]">
-                  {guestCheckinUrl}
-                </span>
-              </div>
+                <div className="mb-4 rounded-xl border border-[#2C2C2C]/10 bg-[#F4EFEA]/80 px-3 py-2 text-xs">
+                  <span className="ltr-field block break-all font-mono text-[#2C2C2C]">
+                    {guestCheckinUrl}
+                  </span>
+                </div>
 
-              <div className="space-y-2.5">
-                <button
-                  type="button"
-                  onClick={handleDownloadPoster}
-                  className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-[#2C2C2C] px-4 py-2.5 text-sm font-bold text-[#FAF7F2] transition-all hover:bg-[#2C2C2C]/90"
-                >
-                  <Download className="h-4 w-4 text-[#E8A588]" aria-hidden="true" />
-                  <span>{t.hotelQrDownload}</span>
-                </button>
-
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2.5">
                   <button
                     type="button"
-                    onClick={handleCopyQrLink}
-                    className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA] px-3 py-2 text-xs font-semibold text-[#2C2C2C] hover:bg-[#E8A588]/20"
+                    onClick={handleDownloadPoster}
+                    className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-[#2C2C2C] px-4 py-2.5 text-sm font-bold text-[#FAF7F2] transition-all hover:bg-[#2C2C2C]/90"
                   >
-                    {copiedLink ? (
-                      <>
-                        <Check className="h-3.5 w-3.5 text-[#2E6B47]" aria-hidden="true" />
-                        <span>{t.hotelQrCopied}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                        <span>{t.hotelQrCopyLink}</span>
-                      </>
-                    )}
+                    <Download className="h-4 w-4 text-[#E8A588]" aria-hidden="true" />
+                    <span>{t.hotelQrDownload}</span>
                   </button>
 
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyQrLink}
+                      className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA] px-3 py-2 text-xs font-semibold text-[#2C2C2C] hover:bg-[#E8A588]/20"
+                    >
+                      {copiedLink ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-[#2E6B47]" aria-hidden="true" />
+                          <span>{t.hotelQrCopied}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>{t.hotelQrCopyLink}</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => onPreviewGuestPage(activeHotel.id)}
+                      className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-[#2C2C2C]/15 bg-[#FAF7F2] px-3 py-2 text-xs font-semibold text-[#8C5338] hover:bg-[#E8A588]/20"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{t.hotelQrPreviewGuest}</span>
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* Editable Hotel Terms & Policies Card */}
+              <section className="rounded-3xl border border-[#2C2C2C]/10 bg-[#FAF7F2] p-5 shadow-[var(--shadow-card)] sm:p-6">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-[#8C5338]" aria-hidden="true" />
+                    <h3 className="text-lg font-bold text-[#2C2C2C]">
+                      {t.hotelTermsSectionTitle}
+                    </h3>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => onPreviewGuestPage(activeHotel.id)}
-                    className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-[#2C2C2C]/15 bg-[#FAF7F2] px-3 py-2 text-xs font-semibold text-[#8C5338] hover:bg-[#E8A588]/20"
+                    onClick={() => {
+                      setTermsDraft(defaultTermsTemplate);
+                      setTermsSavedMsg(false);
+                    }}
+                    className="inline-flex min-h-[36px] items-center gap-1 rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA] px-2.5 py-1 text-xs font-semibold text-[#8C5338] hover:bg-[#E8A588]/20"
                   >
-                    <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>{t.hotelQrPreviewGuest}</span>
+                    <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>{t.hotelTermsResetDefault}</span>
                   </button>
                 </div>
-              </div>
-            </section>
+                <p className="mt-1.5 text-xs leading-relaxed text-[#685F58] sm:text-sm">
+                  {t.hotelTermsSectionDesc}
+                </p>
+
+                <form onSubmit={handleSaveTerms} className="mt-4 space-y-3">
+                  <label htmlFor="hotel-terms-editor" className="sr-only">
+                    {t.hotelTermsInputLabel}
+                  </label>
+                  <textarea
+                    id="hotel-terms-editor"
+                    rows={6}
+                    value={termsDraft}
+                    onChange={(e) => {
+                      setTermsDraft(e.target.value);
+                      setTermsSavedMsg(false);
+                    }}
+                    placeholder={t.hotelTermsPlaceholder}
+                    maxLength={4000}
+                    className="w-full rounded-xl border border-[#2C2C2C]/15 bg-[#FFFFFF] px-3.5 py-2.5 text-sm leading-relaxed text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
+                  />
+
+                  {termsSavedMsg && (
+                    <div
+                      role="status"
+                      className="flex items-center gap-2 rounded-xl border border-[#2E6B47]/30 bg-[#2E6B47]/10 px-3 py-2 text-xs font-semibold text-[#2E6B47]"
+                    >
+                      <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      <span>{t.hotelTermsSavedSuccess}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={savingTerms}
+                    className="inline-flex min-h-[46px] w-full items-center justify-center gap-2 rounded-2xl bg-[#2C2C2C] px-4 py-2.5 text-sm font-bold text-[#FAF7F2] transition-all hover:bg-[#2C2C2C]/90 disabled:opacity-60"
+                  >
+                    {savingTerms ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-[#E8A588]" aria-hidden="true" />
+                    ) : (
+                      <Save className="h-4 w-4 text-[#E8A588]" aria-hidden="true" />
+                    )}
+                    <span>
+                      {savingTerms ? t.hotelTermsSavingButton : t.hotelTermsSaveButton}
+                    </span>
+                  </button>
+                </form>
+              </section>
+            </div>
           )}
 
           {/* Right/Main Column: Incoming Guest Check-Ins */}

@@ -742,7 +742,9 @@ export function isValidMobileNumber(raw: string): boolean {
 
 export function validateGuestRequest(
   form: GuestFormData,
-  declarationAccepted: boolean
+  declarationAccepted: boolean,
+  requireHotelTerms = false,
+  hotelTermsAccepted = false
 ): ValidationResult {
   const missing: ValidationResult['missingRequiredFields'] = [];
   const missingNotesAr: string[] = [];
@@ -804,6 +806,10 @@ export function validateGuestRequest(
 
   if (!declarationAccepted) {
     missing.push('declaration');
+  }
+
+  if (requireHotelTerms && !hotelTermsAccepted) {
+    missing.push('hotelTerms');
   }
 
   if (form.documentType === 'family_register') {

@@ -72,7 +72,6 @@ function getSessionStorageKey(hotelId: string): string {
 export default function App() {
   const [lang, setLang] = useState<Language>('ar');
   const t = getTranslations(lang);
-  const [defaultWhatsAppNumber, setDefaultWhatsAppNumber] = useState('');
 
   const initialUrlState = readUrlState();
   const [viewMode, setViewMode] = useState<AppViewMode>(initialUrlState.viewMode);
@@ -106,6 +105,7 @@ export default function App() {
   const [form, setForm] = useState<GuestFormData>(createEmptyGuestForm);
   const [lockedFields, setLockedFields] = useState<LockedFormFields>(createEmptyLockedFields);
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
+  const [hotelTermsAccepted, setHotelTermsAccepted] = useState(false);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [preparedMessage, setPreparedMessage] = useState<string | null>(null);
   const [preparedUrl, setPreparedUrl] = useState<string | null>(null);
@@ -133,6 +133,7 @@ export default function App() {
 
   // Subscribe to target hotel document when ?hotel=<hotelId> is present
   useEffect(() => {
+    setHotelTermsAccepted(false);
     if (!qrHotelId) {
       setQrHotel(null);
       setLoadingQrHotel(false);
@@ -181,24 +182,6 @@ export default function App() {
     return () => unsub();
   }, [activeSessionId]);
 
-  // Fetch optional general WhatsApp number from server config if set
-  useEffect(() => {
-    let active = true;
-    fetch('/api/config')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((payload) => {
-        if (active && typeof payload?.whatsappNumber === 'string') {
-          setDefaultWhatsAppNumber(payload.whatsappNumber);
-        }
-      })
-      .catch(() => {
-        // Keep empty default so user chooses recipient in WhatsApp
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
   // Revoke preview ObjectURLs on unmount
   useEffect(() => {
     return () => {
@@ -223,8 +206,8 @@ export default function App() {
   };
 
   const validation = useMemo(
-    () => validateGuestRequest(form, declarationAccepted),
-    [form, declarationAccepted]
+    () => validateGuestRequest(form, declarationAccepted, true, hotelTermsAccepted),
+    [form, declarationAccepted, hotelTermsAccepted]
   );
 
   const missingFieldsSet = useMemo(() => {
@@ -519,7 +502,7 @@ export default function App() {
     }
 
     const message = buildWhatsAppMessage(form);
-    const url = buildWhatsAppUrl(message, defaultWhatsAppNumber);
+    const url = buildWhatsAppUrl(message);
     if (!url) return;
 
     // Ensure no copy of any document image remains after sending
@@ -575,6 +558,7 @@ export default function App() {
     setForm(createEmptyGuestForm());
     setLockedFields(createEmptyLockedFields());
     setDeclarationAccepted(false);
+    setHotelTermsAccepted(false);
     setAttemptedSubmit(false);
     setPreparedMessage(null);
     setPreparedUrl(null);
@@ -742,6 +726,8 @@ export default function App() {
                 validation={validation}
                 declarationAccepted={declarationAccepted}
                 onToggleDeclaration={(checked) => setDeclarationAccepted(checked)}
+                hotelTermsAccepted={hotelTermsAccepted}
+                onToggleHotelTerms={(checked) => setHotelTermsAccepted(checked)}
                 onPrepareAndOpenWhatsApp={handlePrepareAndOpenWhatsApp}
                 preparedMessage={preparedMessage}
                 preparedUrl={preparedUrl}
@@ -750,6 +736,7 @@ export default function App() {
                 isSubmittingToHotel={isSubmittingToHotel}
                 submitError={submitHotelError}
                 onSubmitToHotel={handleSubmitToHotel}
+                lang={lang}
                 t={t}
               />
             </div>

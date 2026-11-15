@@ -22,7 +22,7 @@ export const ar = {
   retakePhoto: 'إعادة القراءة',
   deletePhoto: 'إلغاء',
   addBackSide: 'قراءة الوجه الخلفي / صفحة إضافية',
-  geminiConsentLabel: 'أوافق على قراءة بيانات الوثيقة آلياً لتعبئة النموذج دون حفظها.',
+  geminiConsentLabel: 'أوافق على قراءة بيانات الوثيقة وتعبئة النموذج.',
   analyzeNowButton: 'استخراج البيانات الآن',
   readingDocument: 'جارٍ قراءة الوثيقة...',
   readingComplete: 'تمت قراءة البيانات',
@@ -147,6 +147,11 @@ export const ar = {
   validationMissingHeader: 'يرجى استكمال المتطلبات التالية قبل المتابعة:',
   incompleteBorderNotice:
     'ملاحظة: سيتم إرسال الطلب بحالة «ناقص بيانات» لعدم توفر رقم الحدود، وسيتولى الاستقبال مساعدتك.',
+  guestHotelTermsTitle: 'شروط المنشأة وسياساتها',
+  guestReadTermsButton: 'قراءة شروط المنشأة وسياساتها',
+  guestHideTermsButton: 'إخفاء الشروط',
+  guestHotelTermsCheckbox: 'اطلعت على شروط المنشأة وسياساتها وأوافق عليها',
+  guestHotelTermsRequired: 'الموافقة على شروط المنشأة وسياساتها',
 
   // Guest QR Check-in Status
   qrHotelBannerLabel: 'تسجيل الدخول في الفندق:',
@@ -237,6 +242,15 @@ export const ar = {
   hotelPurposeLabel: 'سبب الزيارة',
   hotelBookingLabel: 'مصدر الحجز',
   hotelCompanionsLabel: 'المرافقون:',
+  hotelTermsSectionTitle: 'شروط وسياسات الفندق',
+  hotelTermsSectionDesc:
+    'اكتب أو عدّل الشروط والسياسات الخاصة بفندقك؛ سيظهر هذا النص للنزيل لقراءته والموافقة عليه قبل إرسال البيانات.',
+  hotelTermsInputLabel: 'شروط وسياسات الإقامة في الفندق',
+  hotelTermsPlaceholder: 'أدخل شروط وسياسات الفندق (مواعيد الدخول والمغادرة، سياسة التدخين، الإلغاء، إلخ)...',
+  hotelTermsSaveButton: 'حفظ الشروط',
+  hotelTermsSavingButton: 'جارٍ حفظ الشروط...',
+  hotelTermsSavedSuccess: 'تم حفظ شروط وسياسات الفندق بنجاح.',
+  hotelTermsResetDefault: 'تعبئة نموذج افتراضي',
 
   // App Owner Dashboard (قسم مالك التطبيق)
   ownerDashboardTitle: 'لوحة مالك التطبيق لإدارة الفنادق',

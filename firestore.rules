@@ -44,7 +44,7 @@ service cloud.firestore {
 
     function isValidHotel(data, hotelId) {
       return data.keys().hasAll(['id', 'name', 'ownerUid', 'status', 'isActive', 'expiresAt', 'createdAt', 'updatedAt'])
-        && data.keys().hasOnly(['id', 'name', 'ownerUid', 'status', 'isActive', 'expiresAt', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'ownerUid', 'status', 'isActive', 'expiresAt', 'createdAt', 'updatedAt', 'termsText'])
         && data.id is string && data.id == hotelId && isValidId(data.id)
         && data.name is string && data.name.size() >= 1 && data.name.size() <= 150
         && data.ownerUid is string && isValidId(data.ownerUid)
@@ -52,7 +52,8 @@ service cloud.firestore {
         && data.isActive is bool
         && (data.expiresAt == null || data.expiresAt is timestamp)
         && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
+        && data.updatedAt is timestamp
+        && (!('termsText' in data) || isValidOptionalStr(data.termsText, 4000));
     }
 
     function isValidHotelPrivate(data, hotelId) {
@@ -184,7 +185,7 @@ service cloud.firestore {
         && incoming().updatedAt == request.time
         && (
           (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isActive', 'expiresAt', 'updatedAt']))
-          || (existing().ownerUid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'updatedAt']))
+          || (existing().ownerUid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'termsText', 'updatedAt']))
         );
 
       allow delete: if isAdmin() && isValidId(hotelId);

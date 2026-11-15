@@ -3,19 +3,25 @@ import {
   AlertCircle,
   Check,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Copy,
   ExternalLink,
+  FileText,
   Loader2,
   MessageCircle,
   Send,
 } from 'lucide-react';
 import type { TranslationKeys } from '../i18n/ar';
-import type { HotelRecord, ValidationResult } from '../types/guest';
+import { DEFAULT_HOTEL_TERMS_AR, DEFAULT_HOTEL_TERMS_EN } from '../services/hotels';
+import type { HotelRecord, Language, ValidationResult } from '../types/guest';
 
 interface WhatsAppSubmitSectionProps {
   validation: ValidationResult;
   declarationAccepted: boolean;
   onToggleDeclaration: (checked: boolean) => void;
+  hotelTermsAccepted?: boolean;
+  onToggleHotelTerms?: (checked: boolean) => void;
   onPrepareAndOpenWhatsApp: () => void;
   preparedMessage: string | null;
   preparedUrl: string | null;
@@ -24,6 +30,7 @@ interface WhatsAppSubmitSectionProps {
   isSubmittingToHotel?: boolean;
   submitError?: string | null;
   onSubmitToHotel?: () => void;
+  lang?: Language;
   t: TranslationKeys;
 }
 
@@ -31,6 +38,8 @@ export function WhatsAppSubmitSection({
   validation,
   declarationAccepted,
   onToggleDeclaration,
+  hotelTermsAccepted = false,
+  onToggleHotelTerms,
   onPrepareAndOpenWhatsApp,
   preparedMessage,
   preparedUrl,
@@ -39,11 +48,16 @@ export function WhatsAppSubmitSection({
   isSubmittingToHotel = false,
   submitError = null,
   onSubmitToHotel,
+  lang = 'ar',
   t,
 }: WhatsAppSubmitSectionProps) {
   const [copied, setCopied] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
 
   const isHotelMode = Boolean(targetHotel);
+  const resolvedHotelTerms =
+    targetHotel?.termsText?.trim() ||
+    (lang === 'en' ? DEFAULT_HOTEL_TERMS_EN : DEFAULT_HOTEL_TERMS_AR);
 
   const handleCopyMessage = async () => {
     if (!preparedMessage) return;
@@ -72,6 +86,7 @@ export function WhatsAppSubmitSection({
     accompanyingMemberBirthDates: t.familyMemberDobRequired,
     accompanyingMemberNames: t.familyMemberNameRequired,
     declaration: t.declarationText,
+    hotelTerms: t.guestHotelTermsRequired,
   };
 
   return (
@@ -117,6 +132,63 @@ export function WhatsAppSubmitSection({
           {t.declarationText}
         </span>
       </label>
+
+      {/* Facility/Hotel Terms & Policies Reader + Agreement Checkbox */}
+      <div className="mt-4 space-y-2.5 rounded-2xl border border-[#2C2C2C]/12 bg-[#F4EFEA]/60 p-3.5 sm:p-4">
+        <button
+          type="button"
+          onClick={() => setTermsOpen((prev) => !prev)}
+          aria-expanded={termsOpen}
+          className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-xl border border-[#2C2C2C]/15 bg-[#FFFFFF] px-4 py-2.5 text-start text-sm font-bold text-[#2C2C2C] transition-colors hover:bg-[#E8A588]/15"
+        >
+          <span className="flex items-center gap-2.5">
+            <FileText className="h-4 w-4 shrink-0 text-[#8C5338]" aria-hidden="true" />
+            <span>
+              {termsOpen ? t.guestHideTermsButton : t.guestReadTermsButton}
+              {!termsOpen && targetHotel?.name && (
+                <span className="ms-1.5 font-medium text-[#685F58]">
+                  ({targetHotel.name})
+                </span>
+              )}
+            </span>
+          </span>
+          {termsOpen ? (
+            <ChevronUp className="h-4 w-4 shrink-0 text-[#8C5338]" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="h-4 w-4 shrink-0 text-[#8C5338]" aria-hidden="true" />
+          )}
+        </button>
+
+        {termsOpen && (
+          <div className="max-h-60 overflow-y-auto rounded-xl border border-[#2C2C2C]/10 bg-[#FFFFFF] p-4">
+            <p className="mb-2 text-xs font-bold text-[#8C5338]">
+              {t.guestHotelTermsTitle}
+              {targetHotel?.name ? ` — ${targetHotel.name}` : ''}
+            </p>
+            <div className="whitespace-pre-line text-sm leading-relaxed text-[#2C2C2C]">
+              {resolvedHotelTerms}
+            </div>
+          </div>
+        )}
+
+        <label
+          className={`flex min-h-[52px] cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors ${
+            attemptedSubmit && !hotelTermsAccepted
+              ? 'border-[#C58B6D] bg-[#E8A588]/15'
+              : 'border-[#2C2C2C]/10 bg-[#FAF7F2]'
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={hotelTermsAccepted}
+            onChange={(e) => onToggleHotelTerms?.(e.target.checked)}
+            className="mt-0.5 h-5 w-5 shrink-0 accent-[#C58B6D]"
+          />
+          <span className="text-sm font-medium leading-relaxed text-[#2C2C2C]">
+            {t.guestHotelTermsCheckbox}
+          </span>
+        </label>
+      </div>
 
       {/* Validation summary when user attempted to submit with missing items */}
       {attemptedSubmit && !validation.canOpenWhatsApp && (

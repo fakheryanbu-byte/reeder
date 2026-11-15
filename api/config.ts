@@ -1,5 +1,4 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { getConfiguredWhatsAppNumber } from '../server/apiHandlers.ts';
 
 export default function handler(req: IncomingMessage, res: ServerResponse) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -14,5 +13,5 @@ export default function handler(req: IncomingMessage, res: ServerResponse) {
   }
 
   res.statusCode = 200;
-  res.end(JSON.stringify({ whatsappNumber: getConfiguredWhatsAppNumber() }));
+  res.end(JSON.stringify({ ok: true }));
 }
