@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   onAuthStateChanged,
-  signInWithPopup,
   signOut,
   type User,
 } from 'firebase/auth';
@@ -35,7 +34,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import type { TranslationKeys } from '../i18n/ar';
-import { auth, googleProvider } from '../lib/firebase';
+import { auth, formatFirebaseAuthError, signInWithGoogle } from '../lib/firebase';
 import {
   approveCheckinSession,
   subscribeToHotelCheckinSessions,
@@ -224,11 +223,11 @@ export function HotelPortal({
     setSigningIn(true);
     setAuthError(null);
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithGoogle();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Sign-in failed.';
-      if (!msg.includes('popup-closed-by-user')) {
-        setAuthError(msg);
+      const formatted = formatFirebaseAuthError(err);
+      if (formatted) {
+        setAuthError(formatted);
       }
     } finally {
       setSigningIn(false);

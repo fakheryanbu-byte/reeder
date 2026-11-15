@@ -1,12 +1,16 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   onAuthStateChanged,
-  signInWithPopup,
   signOut,
   type User,
 } from 'firebase/auth';
 import { Loader2, LogIn, LogOut, ShieldAlert, ShieldCheck } from 'lucide-react';
-import { auth, googleProvider, isUserAuthorizedAdmin } from '../lib/firebase';
+import {
+  auth,
+  formatFirebaseAuthError,
+  isUserAuthorizedAdmin,
+  signInWithGoogle,
+} from '../lib/firebase';
 import type { TranslationKeys } from '../i18n/ar';
 
 interface AdminAuthGateProps {
@@ -60,11 +64,11 @@ export function AdminAuthGate({ t, children }: AdminAuthGateProps) {
     setSigningIn(true);
     setAuthError(null);
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithGoogle();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Sign-in failed.';
-      if (!msg.includes('popup-closed-by-user')) {
-        setAuthError(msg);
+      const formatted = formatFirebaseAuthError(err);
+      if (formatted) {
+        setAuthError(formatted);
       }
     } finally {
       setSigningIn(false);

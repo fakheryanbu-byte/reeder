@@ -1,5 +1,11 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, type User } from 'firebase/auth';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  type User,
+} from 'firebase/auth';
 import { doc, getDoc, getDocFromServer, getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -9,6 +15,48 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+export async function signInWithGoogle(): Promise<void> {
+  try {
+    await signInWithPopup(auth, googleProvider);
+  } catch (err) {
+    const code =
+      typeof err === 'object' && err !== null && 'code' in err
+        ? String((err as { code?: unknown }).code)
+        : '';
+    if (code === 'auth/popup-blocked') {
+      await signInWithRedirect(auth, googleProvider);
+      return;
+    }
+    throw err;
+  }
+}
+
+export function formatFirebaseAuthError(err: unknown): string | null {
+  const code =
+    typeof err === 'object' && err !== null && 'code' in err
+      ? String((err as { code?: unknown }).code)
+      : '';
+  const rawMsg = err instanceof Error ? err.message : String(err ?? '');
+
+  if (code === 'auth/popup-closed-by-user' || rawMsg.includes('popup-closed-by-user')) {
+    return null;
+  }
+
+  const isEn =
+    typeof document !== 'undefined' && document.documentElement.lang === 'en';
+  const currentHost =
+    typeof window !== 'undefined' ? window.location.hostname : '';
+
+  if (code === 'auth/unauthorized-domain' || rawMsg.includes('auth/unauthorized-domain')) {
+    if (isEn) {
+      return `This domain (${currentHost}) is not authorized in Firebase Authentication yet. Add "${currentHost}" in Firebase Console → Authentication → Settings → Authorized domains (Project: ${firebaseConfig.projectId}).`;
+    }
+    return `هذا النطاق (${currentHost}) غير مضاف في النطاقات المصرح بها داخل Firebase. افتح Firebase Console ← Authentication ← Settings ← Authorized domains للمشروع (${firebaseConfig.projectId}) وأضف النطاق: ${currentHost}`;
+  }
+
+  return rawMsg || (isEn ? 'Sign-in failed.' : 'تعذر تسجيل الدخول.');
+}
 
 export enum OperationType {
   CREATE = 'create',
