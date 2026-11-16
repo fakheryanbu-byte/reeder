@@ -1306,7 +1306,10 @@ export function HotelPortal({
                 <div className="inline-flex flex-wrap rounded-xl bg-[#F4EFEA] p-1">
                   <button
                     type="button"
-                    onClick={() => setActiveTab('pending')}
+                    onClick={() => {
+                      setActiveTab('pending');
+                      setActionError(null);
+                    }}
                     className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold whitespace-nowrap ${
                       activeTab === 'pending'
                         ? 'bg-[#FFFFFF] text-[#2C2C2C] shadow-sm'
@@ -1320,7 +1323,10 @@ export function HotelPortal({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveTab('approved')}
+                    onClick={() => {
+                      setActiveTab('approved');
+                      setActionError(null);
+                    }}
                     className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold whitespace-nowrap ${
                       activeTab === 'approved'
                         ? 'bg-[#FFFFFF] text-[#2C2C2C] shadow-sm'
@@ -1334,7 +1340,10 @@ export function HotelPortal({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveTab('cancelled')}
+                    onClick={() => {
+                      setActiveTab('cancelled');
+                      setActionError(null);
+                    }}
                     className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold whitespace-nowrap ${
                       activeTab === 'cancelled'
                         ? 'bg-[#FFFFFF] text-[#2C2C2C] shadow-sm'
@@ -1348,7 +1357,10 @@ export function HotelPortal({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveTab('all')}
+                    onClick={() => {
+                      setActiveTab('all');
+                      setActionError(null);
+                    }}
                     className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold whitespace-nowrap ${
                       activeTab === 'all'
                         ? 'bg-[#FFFFFF] text-[#2C2C2C] shadow-sm'

@@ -13,6 +13,25 @@ interface HeaderBarProps {
   hasSessionData: boolean;
 }
 
+export interface HeaderNavigationState {
+  showPortalNav: boolean;
+  isIsolatedHotelView: boolean;
+  isTitleClickable: boolean;
+}
+
+export function getHeaderNavigationState(
+  viewMode: AppViewMode,
+  isQrGuestMode: boolean
+): HeaderNavigationState {
+  const isIsolatedHotelView = viewMode === 'hotel' && !isQrGuestMode;
+  const showPortalNav = !isQrGuestMode && viewMode !== 'hotel';
+  return {
+    showPortalNav,
+    isIsolatedHotelView,
+    isTitleClickable: showPortalNav,
+  };
+}
+
 export function HeaderBar({
   t,
   viewMode,
@@ -28,18 +47,32 @@ export function HeaderBar({
     { mode: 'owner', label: t.navOwnerDashboard, icon: ShieldCheck },
   ];
 
+  const { showPortalNav, isIsolatedHotelView, isTitleClickable } =
+    getHeaderNavigationState(viewMode, isQrGuestMode);
+
   return (
     <header className="sticky top-0 z-30 border-b border-[#2C2C2C]/10 bg-[#FAF7F2]/92 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
-        <button
-          type="button"
-          onClick={() => onChangeView('guest')}
-          className="min-w-0 text-start text-base font-bold tracking-tight text-[#2C2C2C] whitespace-nowrap shrink-0 sm:text-lg"
-        >
-          {t.appTitle}
-        </button>
+        {isIsolatedHotelView ? (
+          <div className="inline-flex min-w-0 items-center gap-2 text-start text-base font-bold tracking-tight text-[#2C2C2C] whitespace-nowrap shrink-0 sm:text-lg">
+            <Building2 className="h-4 w-4 shrink-0 text-[#8C5338]" aria-hidden="true" />
+            <span>{t.navHotelsPortal}</span>
+          </div>
+        ) : !isTitleClickable ? (
+          <span className="min-w-0 text-start text-base font-bold tracking-tight text-[#2C2C2C] whitespace-nowrap shrink-0 sm:text-lg">
+            {t.appTitle}
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onChangeView('guest')}
+            className="min-w-0 text-start text-base font-bold tracking-tight text-[#2C2C2C] whitespace-nowrap shrink-0 sm:text-lg"
+          >
+            {t.appTitle}
+          </button>
+        )}
 
-        {!isQrGuestMode && (
+        {showPortalNav && (
           <nav
             aria-label="Primary"
             className="hidden items-center gap-1 rounded-xl border border-[#2C2C2C]/10 bg-[#F4EFEA] p-1 md:flex"
@@ -93,7 +126,7 @@ export function HeaderBar({
       </div>
 
       {/* Compact single-row mobile navigation tabs */}
-      {!isQrGuestMode && (
+      {showPortalNav && (
         <nav
           aria-label="Mobile navigation"
           className="flex items-center gap-1.5 overflow-x-auto border-t border-[#2C2C2C]/8 bg-[#FAF7F2] px-4 py-1.5 md:hidden"
