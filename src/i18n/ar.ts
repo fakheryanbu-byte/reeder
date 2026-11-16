@@ -170,10 +170,6 @@ export const ar = {
   approvedRoomLabel: 'رقم الغرفة المخصص لك',
   approvedPriceLabel: 'سعر الغرفة',
   approvedWelcomeLabel: 'رسالة الترحيب من الفندق',
-  saveApprovalImageButton: 'حفظ الموافقة كصورة',
-  savingApprovalImageButton: 'جارٍ تجهيز الصورة...',
-  approvalImageSaved: 'تم حفظ صورة الموافقة في جهازك بنجاح.',
-  approvalImageSaveError: 'تعذر حفظ الصورة. يرجى المحاولة مرة أخرى.',
   startNewCheckin: 'تسجيل نزيل جديد',
 
   // Admin Auth Gate

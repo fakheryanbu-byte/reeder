@@ -1,14 +1,11 @@
 import { useState } from 'react';
 import {
-  AlertCircle,
   Banknote,
   Building2,
   Check,
   CheckCircle2,
   Copy,
-  ImageDown,
   KeyRound,
-  Loader2,
   MessageSquareQuote,
   RotateCcw,
 } from 'lucide-react';
@@ -19,7 +16,6 @@ import type {
   HotelRecord,
   Language,
 } from '../types/guest';
-import { saveApprovalImageToDevice } from '../utils/approvalImage';
 import {
   buildWhatsAppMessage,
   checkinSessionToGuestForm,
@@ -44,9 +40,6 @@ export function GuestApprovedCard({
   onStartNewCheckin,
 }: GuestApprovedCardProps) {
   const [copied, setCopied] = useState(false);
-  const [savingImage, setSavingImage] = useState(false);
-  const [imageSaved, setImageSaved] = useState(false);
-  const [imageError, setImageError] = useState<string | null>(null);
 
   const hotelName = hotel?.name || session.hotelName || '';
   const guestName = session.guestName || form.fullName.trim();
@@ -83,40 +76,6 @@ export function GuestApprovedCard({
       setTimeout(() => setCopied(false), 2500);
     } catch {
       // Clipboard fallback ignored gracefully
-    }
-  };
-
-  const handleSaveApprovalImage = async () => {
-    setSavingImage(true);
-    setImageSaved(false);
-    setImageError(null);
-    try {
-      const outcome = await saveApprovalImageToDevice({
-        hotelName,
-        guestName,
-        roomNumber,
-        welcomeMessage,
-        guestVisiblePrice,
-        sessionId: session.id,
-        approvedAt: session.approvedAt,
-        lang,
-        labels: {
-          approvedTitle: t.approvedTitle,
-          approvedRoomLabel: t.approvedRoomLabel,
-          approvedPriceLabel: t.approvedPriceLabel,
-          approvedWelcomeLabel: t.approvedWelcomeLabel,
-          guestLabel: t.waitingGuestLabel,
-          sessionLabel: t.waitingSessionIdLabel,
-        },
-      });
-      if (outcome !== 'cancelled') {
-        setImageSaved(true);
-        setTimeout(() => setImageSaved(false), 3500);
-      }
-    } catch {
-      setImageError(t.approvalImageSaveError);
-    } finally {
-      setSavingImage(false);
     }
   };
 
@@ -182,43 +141,7 @@ export function GuestApprovedCard({
         </p>
       </div>
 
-      {imageSaved && (
-        <div
-          role="status"
-          className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-[#2E6B47]/30 bg-[#2E6B47]/10 px-3.5 py-2.5 text-xs font-semibold text-[#2E6B47]"
-        >
-          <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{t.approvalImageSaved}</span>
-        </div>
-      )}
-
-      {imageError && (
-        <div
-          role="alert"
-          className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-[#9E3B33]/30 bg-[#9E3B33]/10 px-3.5 py-2.5 text-xs font-semibold text-[#9E3B33]"
-        >
-          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{imageError}</span>
-        </div>
-      )}
-
       <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
-        <button
-          type="button"
-          disabled={savingImage}
-          onClick={handleSaveApprovalImage}
-          className="inline-flex min-h-[46px] items-center gap-2 rounded-xl border border-[#2E6B47]/35 bg-[#2E6B47] px-4 py-2 text-xs font-bold text-[#FAF7F2] transition-colors hover:bg-[#2E6B47]/90 disabled:opacity-60"
-        >
-          {savingImage ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <ImageDown className="h-4 w-4" aria-hidden="true" />
-          )}
-          <span>
-            {savingImage ? t.savingApprovalImageButton : t.saveApprovalImageButton}
-          </span>
-        </button>
-
         <button
           type="button"
           onClick={handleCopyRecord}
