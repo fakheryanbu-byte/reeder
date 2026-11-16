@@ -145,6 +145,9 @@ service cloud.firestore {
           'status',
           'roomNumber',
           'welcomeMessage',
+          'roomPrice',
+          'discountedPrice',
+          'discountPercent',
           'createdAt',
           'approvedAt'
         ])
@@ -157,6 +160,9 @@ service cloud.firestore {
         && data.status is string && data.status in ['pending', 'approved']
         && (data.roomNumber == null || (data.roomNumber is string && data.roomNumber.size() >= 1 && data.roomNumber.size() <= 40))
         && (data.welcomeMessage == null || (data.welcomeMessage is string && data.welcomeMessage.size() >= 1 && data.welcomeMessage.size() <= 500))
+        && (!('roomPrice' in data) || data.roomPrice == null || (data.roomPrice is number && data.roomPrice >= 0 && data.roomPrice <= 1000000))
+        && (!('discountedPrice' in data) || data.discountedPrice == null || (data.discountedPrice is number && data.discountedPrice >= 0 && data.discountedPrice <= 1000000))
+        && (!('discountPercent' in data) || data.discountPercent == null || (data.discountPercent is number && data.discountPercent >= 0 && data.discountPercent <= 100))
         && data.createdAt is timestamp
         && (data.approvedAt == null || data.approvedAt is timestamp)
         && isValidPassportData(data.passportData);
@@ -231,6 +237,9 @@ service cloud.firestore {
         && incoming().status == 'pending'
         && incoming().roomNumber == null
         && incoming().welcomeMessage == null
+        && (!('roomPrice' in incoming()) || incoming().roomPrice == null)
+        && (!('discountedPrice' in incoming()) || incoming().discountedPrice == null)
+        && (!('discountPercent' in incoming()) || incoming().discountPercent == null)
         && incoming().approvedAt == null
         && incoming().createdAt == request.time
         && exists(/databases/$(database)/documents/hotels/$(incoming().hotelId))
@@ -255,8 +264,17 @@ service cloud.firestore {
         && incoming().welcomeMessage is string
         && incoming().welcomeMessage.size() >= 1
         && incoming().welcomeMessage.size() <= 500
+        && incoming().roomPrice is number
+        && incoming().roomPrice > 0
+        && incoming().roomPrice <= 1000000
+        && incoming().discountedPrice is number
+        && incoming().discountedPrice >= 0
+        && incoming().discountedPrice <= incoming().roomPrice
+        && incoming().discountPercent is number
+        && incoming().discountPercent >= 0
+        && incoming().discountPercent <= 100
         && incoming().approvedAt == request.time
-        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'roomNumber', 'welcomeMessage', 'approvedAt'])
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'roomNumber', 'welcomeMessage', 'roomPrice', 'discountedPrice', 'discountPercent', 'approvedAt'])
         && incoming().id == existing().id
         && incoming().createdAt == existing().createdAt
         && incoming().guestName == existing().guestName
