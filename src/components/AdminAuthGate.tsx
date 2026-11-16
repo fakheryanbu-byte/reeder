@@ -214,7 +214,7 @@ export function AdminAuthGate({ t, children }: AdminAuthGateProps) {
                 setAuthEmail(e.target.value);
                 setAuthError(null);
               }}
-              placeholder={t.hotelAuthEmailPlaceholder}
+              placeholder={BOOTSTRAPPED_ADMIN_EMAIL}
               className="ltr-field min-h-[48px] w-full rounded-xl border border-[#2C2C2C]/15 bg-[#FFFFFF] px-3.5 py-2.5 text-sm text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
             />
           </div>

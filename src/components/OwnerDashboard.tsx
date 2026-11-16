@@ -4,6 +4,9 @@ import {
   Building2,
   CalendarClock,
   CheckCircle2,
+  Eye,
+  EyeOff,
+  KeyRound,
   Loader2,
   LogOut,
   Mail,
@@ -15,6 +18,10 @@ import {
   Trash2,
 } from 'lucide-react';
 import type { TranslationKeys } from '../i18n/ar';
+import {
+  changeSignedInUserPassword,
+  formatFirebaseAuthError,
+} from '../lib/firebase';
 import {
   approveOrRenewHotel,
   deleteHotel,
@@ -47,6 +54,15 @@ export function OwnerDashboard({
   const [durationDays, setDurationDays] = useState<number>(30);
   const [busyHotelId, setBusyHotelId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const [showPasswordPanel, setShowPasswordPanel] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeToAllHotelsForAdmin(
@@ -118,6 +134,39 @@ export function OwnerDashboard({
     });
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    if (!currentPassword) {
+      setPasswordError(t.hotelAuthErrPasswordShort);
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError(t.hotelAuthErrPasswordShort);
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError(t.hotelAuthErrPasswordMismatch);
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      await changeSignedInUserPassword(currentPassword, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setPasswordSuccess(true);
+    } catch (err) {
+      const formatted = formatFirebaseAuthError(err);
+      setPasswordError(formatted ?? 'Failed to update password.');
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* Header & Summary Metrics */}
@@ -130,12 +179,25 @@ export function OwnerDashboard({
             <p className="mt-1 text-sm text-[#685F58]">{t.ownerDashboardDesc}</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             {adminEmail && (
               <span className="ltr-field text-xs font-medium text-[#685F58]">
                 {adminEmail}
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => {
+                setShowPasswordPanel((prev) => !prev);
+                setPasswordError(null);
+                setPasswordSuccess(false);
+              }}
+              aria-expanded={showPasswordPanel}
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-[#C58B6D]/45 bg-[#FFFFFF] px-3.5 py-2 text-xs font-semibold text-[#8C5338] hover:bg-[#E8A588]/20 whitespace-nowrap"
+            >
+              <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>{t.ownerChangePasswordButton}</span>
+            </button>
             <button
               type="button"
               onClick={onSignOut}
@@ -146,6 +208,158 @@ export function OwnerDashboard({
             </button>
           </div>
         </div>
+
+        {showPasswordPanel && (
+          <form
+            onSubmit={handleChangePassword}
+            className="mt-5 rounded-2xl border border-[#C58B6D]/35 bg-[#FFFFFF] p-4 sm:p-5"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-[#2C2C2C]">
+                  {t.ownerChangePasswordTitle}
+                </h3>
+                <p className="mt-0.5 text-xs text-[#685F58]">
+                  {t.ownerChangePasswordDesc}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPasswords((prev) => !prev)}
+                aria-label={showPasswords ? 'Hide passwords' : 'Show passwords'}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#2C2C2C]/10 bg-[#FAF7F2] text-[#685F58] hover:text-[#2C2C2C]"
+              >
+                {showPasswords ? (
+                  <EyeOff className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Eye className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <label
+                  htmlFor="owner-current-password"
+                  className="mb-1 block text-xs font-semibold text-[#2C2C2C]"
+                >
+                  {t.ownerCurrentPasswordLabel}
+                </label>
+                <input
+                  id="owner-current-password"
+                  type={showPasswords ? 'text' : 'password'}
+                  dir="ltr"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(e) => {
+                    setCurrentPassword(e.target.value);
+                    setPasswordError(null);
+                  }}
+                  placeholder={t.ownerCurrentPasswordPlaceholder}
+                  className="ltr-field min-h-[44px] w-full rounded-xl border border-[#2C2C2C]/15 bg-[#FAF7F2] px-3 py-2 text-sm text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="owner-new-password"
+                  className="mb-1 block text-xs font-semibold text-[#2C2C2C]"
+                >
+                  {t.ownerNewPasswordLabel}
+                </label>
+                <input
+                  id="owner-new-password"
+                  type={showPasswords ? 'text' : 'password'}
+                  dir="ltr"
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    setPasswordError(null);
+                  }}
+                  placeholder={t.ownerNewPasswordPlaceholder}
+                  className="ltr-field min-h-[44px] w-full rounded-xl border border-[#2C2C2C]/15 bg-[#FAF7F2] px-3 py-2 text-sm text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="owner-confirm-new-password"
+                  className="mb-1 block text-xs font-semibold text-[#2C2C2C]"
+                >
+                  {t.ownerConfirmNewPasswordLabel}
+                </label>
+                <input
+                  id="owner-confirm-new-password"
+                  type={showPasswords ? 'text' : 'password'}
+                  dir="ltr"
+                  autoComplete="new-password"
+                  value={confirmNewPassword}
+                  onChange={(e) => {
+                    setConfirmNewPassword(e.target.value);
+                    setPasswordError(null);
+                  }}
+                  placeholder={t.hotelAuthConfirmPasswordPlaceholder}
+                  className="ltr-field min-h-[44px] w-full rounded-xl border border-[#2C2C2C]/15 bg-[#FAF7F2] px-3 py-2 text-sm text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
+                />
+              </div>
+            </div>
+
+            {passwordError && (
+              <div
+                role="alert"
+                className="mt-3 flex items-start gap-2 rounded-xl border border-[#9E3B33]/30 bg-[#9E3B33]/10 px-3 py-2 text-xs font-medium text-[#9E3B33]"
+              >
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>{passwordError}</span>
+              </div>
+            )}
+
+            {passwordSuccess && (
+              <div
+                role="status"
+                className="mt-3 flex items-start gap-2 rounded-xl border border-[#2E6B47]/30 bg-[#2E6B47]/10 px-3 py-2 text-xs font-medium text-[#2E6B47]"
+              >
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>{t.ownerPasswordChangedSuccess}</span>
+              </div>
+            )}
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                type="submit"
+                disabled={savingPassword}
+                className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl bg-[#2C2C2C] px-4 py-2 text-xs font-bold text-[#FAF7F2] hover:bg-[#2C2C2C]/90 disabled:opacity-60"
+              >
+                {savingPassword ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#E8A588]" aria-hidden="true" />
+                ) : (
+                  <KeyRound className="h-3.5 w-3.5 text-[#E8A588]" aria-hidden="true" />
+                )}
+                <span>
+                  {savingPassword
+                    ? t.ownerSavingPasswordButton
+                    : t.ownerSavePasswordButton}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPasswordPanel(false);
+                  setCurrentPassword('');
+                  setNewPassword('');
+                  setConfirmNewPassword('');
+                  setPasswordError(null);
+                  setPasswordSuccess(false);
+                }}
+                className="inline-flex min-h-[42px] items-center justify-center rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA] px-4 py-2 text-xs font-semibold text-[#2C2C2C] hover:bg-[#E8A588]/20"
+              >
+                {t.ownerCancelDelete}
+              </button>
+            </div>
+          </form>
+        )}
 
         {/* 4-column flat stats strip */}
         <dl className="mt-5 grid grid-cols-2 divide-y divide-[#2C2C2C]/10 border-t border-[#2C2C2C]/10 pt-4 sm:grid-cols-4 sm:divide-x sm:divide-y-0 rtl:sm:divide-x-reverse">

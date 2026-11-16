@@ -1,13 +1,16 @@
 import { initializeApp } from 'firebase/app';
 import {
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
   getAuth,
   GoogleAuthProvider,
+  reauthenticateWithCredential,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
+  updatePassword,
   type User,
 } from 'firebase/auth';
 import { doc, getDoc, getDocFromServer, getFirestore } from 'firebase/firestore';
@@ -62,6 +65,19 @@ export async function refreshCurrentUser(): Promise<User | null> {
   return auth.currentUser;
 }
 
+export async function changeSignedInUserPassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  const user = auth.currentUser;
+  if (!user || !user.email) {
+    throw new Error('Not signed in.');
+  }
+  const credential = EmailAuthProvider.credential(user.email, currentPassword);
+  await reauthenticateWithCredential(user, credential);
+  await updatePassword(user, newPassword);
+}
+
 export function formatFirebaseAuthError(err: unknown): string | null {
   const code =
     typeof err === 'object' && err !== null && 'code' in err
@@ -87,8 +103,14 @@ export function formatFirebaseAuthError(err: unknown): string | null {
 
   if (code === 'auth/operation-not-allowed') {
     return isEn
-      ? 'Email/Password sign-in is not enabled yet in Firebase Console → Authentication → Sign-in method.'
-      : 'تسجيل الدخول بالبريد الإلكتروني وكلمة المرور غير مفعّل بعد في Firebase Console ← Authentication ← Sign-in method.';
+      ? `Email/Password sign-in is not enabled yet in Firebase Console → Authentication → Sign-in method (Project: ${firebaseConfig.projectId}).`
+      : `تسجيل الدخول بالبريد الإلكتروني وكلمة المرور غير مفعّل بعد في Firebase Console ← Authentication ← Sign-in method (المشروع: ${firebaseConfig.projectId}).`;
+  }
+
+  if (code === 'auth/requires-recent-login') {
+    return isEn
+      ? 'Please sign out and sign in again before changing your password.'
+      : 'يرجى تسجيل الخروج والدخول مجدداً قبل تغيير كلمة المرور.';
   }
 
   if (code === 'auth/email-already-in-use') {
