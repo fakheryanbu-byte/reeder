@@ -19,6 +19,8 @@ describe('HeaderBar view isolation', () => {
       />
     );
 
+    expect(t.appTitle).toBe('مهلي');
+    expect(html).toContain(t.appTitle);
     expect(html).toContain(t.navHotelsPortal);
     expect(html).not.toContain(t.navGuestPrep);
     expect(html).not.toContain(t.navOwnerDashboard);

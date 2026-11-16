@@ -1,7 +1,7 @@
 import type { TranslationKeys } from './ar';
 
 export const en: TranslationKeys = {
-  appTitle: 'Guest Check-In Prep',
+  appTitle: 'Mahli',
   appSubtitle: 'Prepare your check-in details and send them directly via WhatsApp or to a hotel reception portal',
   langToggle: 'العربية',
   clearMyData: 'Clear my data',
@@ -262,9 +262,9 @@ export const en: TranslationKeys = {
   hotelRoomInputLabel: 'Room number',
   hotelRoomPlaceholder: 'e.g. 204',
   hotelPricingBoxTitle: 'Room Pricing',
-  hotelRoomPriceLabel: 'Price (Room price)',
+  hotelRoomPriceLabel: 'Room price',
   hotelRoomPricePlaceholder: 'e.g. 500',
-  hotelDiscountedPriceLabel: 'Price after discount (Final room price)',
+  hotelDiscountedPriceLabel: 'Price after discount',
   hotelDiscountedPricePlaceholder: 'e.g. 400',
   hotelDiscountPercentLabel: 'Discount % (Auto-calculated)',
   hotelDiscountInternalNote: 'Hotel only — hidden from guest',

@@ -1,5 +1,5 @@
 export const ar = {
-  appTitle: 'تجهيز بيانات النزيل',
+  appTitle: 'مهلي',
   appSubtitle: 'تحضير بيانات تسجيل الدخول وإرسالها مباشرةً عبر واتساب أو لبوابة الفندق',
   langToggle: 'English',
   clearMyData: 'مسح بياناتي',
@@ -259,9 +259,9 @@ export const ar = {
   hotelRoomInputLabel: 'رقم الغرفة',
   hotelRoomPlaceholder: 'مثال: 204',
   hotelPricingBoxTitle: 'تسعير الغرفة',
-  hotelRoomPriceLabel: 'السعر (سعر الغرفة)',
+  hotelRoomPriceLabel: 'سعر الغرفة',
   hotelRoomPricePlaceholder: 'مثال: 500',
-  hotelDiscountedPriceLabel: 'السعر بعد الخصم (سعر الغرفة بعد الخصم)',
+  hotelDiscountedPriceLabel: 'السعر بعد الخصم',
   hotelDiscountedPricePlaceholder: 'مثال: 400',
   hotelDiscountPercentLabel: 'نسبة الخصم (تُحسب تلقائياً)',
   hotelDiscountInternalNote: 'تظهر للفندق فقط ولا تظهر للعميل',
