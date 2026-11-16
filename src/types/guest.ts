@@ -160,7 +160,7 @@ export interface ValidationResult {
   missingNotesEn: string[];
 }
 
-export type CheckinSessionStatus = 'pending' | 'approved';
+export type CheckinSessionStatus = 'pending' | 'approved' | 'cancelled';
 
 export interface CheckinPassportData {
   documentType: DocumentType;
@@ -199,4 +199,5 @@ export interface CheckinSessionRecord {
   discountPercent: number | null;
   createdAt: Date | null;
   approvedAt: Date | null;
+  cancelledAt?: Date | null;
 }

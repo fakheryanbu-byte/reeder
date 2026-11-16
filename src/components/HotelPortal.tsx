@@ -37,6 +37,7 @@ import {
   Send,
   UserPlus,
   Volume2,
+  XCircle,
 } from 'lucide-react';
 import type { TranslationKeys } from '../i18n/ar';
 import {
@@ -48,6 +49,7 @@ import {
 } from '../lib/firebase';
 import {
   approveCheckinSession,
+  cancelCheckinSession,
   subscribeToHotelCheckinSessions,
 } from '../services/checkinSessions';
 import {
@@ -123,7 +125,7 @@ export function HotelPortal({
 
   // Live guest check-in requests state
   const [sessions, setSessions] = useState<CheckinSessionRecord[]>([]);
-  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'all'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'cancelled' | 'all'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [roomInputs, setRoomInputs] = useState<Record<string, string>>({});
@@ -131,6 +133,8 @@ export function HotelPortal({
   const [discountedPriceInputs, setDiscountedPriceInputs] = useState<Record<string, string>>({});
   const [welcomeInputs, setWelcomeInputs] = useState<Record<string, string>>({});
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const soundEnabledRef = useRef(soundEnabled);
@@ -518,6 +522,41 @@ export function HotelPortal({
     }
   };
 
+  const handleCancelGuestRequest = async (sessionId: string) => {
+    setCancellingId(sessionId);
+    setActionError(null);
+    try {
+      await cancelCheckinSession(sessionId);
+      setConfirmCancelId((prev) => (prev === sessionId ? null : prev));
+      setRoomInputs((prev) => {
+        const next = { ...prev };
+        delete next[sessionId];
+        return next;
+      });
+      setPriceInputs((prev) => {
+        const next = { ...prev };
+        delete next[sessionId];
+        return next;
+      });
+      setDiscountedPriceInputs((prev) => {
+        const next = { ...prev };
+        delete next[sessionId];
+        return next;
+      });
+      setWelcomeInputs((prev) => {
+        const next = { ...prev };
+        delete next[sessionId];
+        return next;
+      });
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : 'Failed to cancel guest check-in.'
+      );
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   const pendingCount = useMemo(
     () => sessions.filter((s) => s.status === 'pending').length,
     [sessions]
@@ -526,12 +565,17 @@ export function HotelPortal({
     () => sessions.filter((s) => s.status === 'approved').length,
     [sessions]
   );
+  const cancelledCount = useMemo(
+    () => sessions.filter((s) => s.status === 'cancelled').length,
+    [sessions]
+  );
 
   const filteredSessions = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return sessions.filter((s) => {
       if (activeTab === 'pending' && s.status !== 'pending') return false;
       if (activeTab === 'approved' && s.status !== 'approved') return false;
+      if (activeTab === 'cancelled' && s.status !== 'cancelled') return false;
       if (!q) return true;
       return (
         s.guestName.toLowerCase().includes(q) ||
@@ -1259,7 +1303,7 @@ export function HotelPortal({
               </div>
 
               <div className="mt-4 flex flex-col gap-3 border-t border-[#2C2C2C]/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="inline-flex rounded-xl bg-[#F4EFEA] p-1">
+                <div className="inline-flex flex-wrap rounded-xl bg-[#F4EFEA] p-1">
                   <button
                     type="button"
                     onClick={() => setActiveTab('pending')}
@@ -1286,6 +1330,20 @@ export function HotelPortal({
                     <span>{t.hotelTabApproved}</span>
                     <span className="tabular-nums font-mono text-[#2E6B47]">
                       ({approvedCount})
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('cancelled')}
+                    className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold whitespace-nowrap ${
+                      activeTab === 'cancelled'
+                        ? 'bg-[#FFFFFF] text-[#2C2C2C] shadow-sm'
+                        : 'text-[#685F58] hover:text-[#2C2C2C]'
+                    }`}
+                  >
+                    <span>{t.hotelTabCancelled}</span>
+                    <span className="tabular-nums font-mono text-[#9E3B33]">
+                      ({cancelledCount})
                     </span>
                   </button>
                   <button
@@ -1378,6 +1436,8 @@ export function HotelPortal({
                     welcomeInputs[session.id] ??
                     getDefaultWelcome(activeHotel.name, session.guestName, roomVal);
                   const isApproving = approvingId === session.id;
+                  const isCancelling = cancellingId === session.id;
+                  const isConfirmingCancel = confirmCancelId === session.id;
                   const approvedFinalPrice =
                     typeof session.discountedPrice === 'number'
                       ? session.discountedPrice
@@ -1420,11 +1480,17 @@ export function HotelPortal({
                           </div>
                         </div>
 
-                        {!isPending && session.roomNumber && (
+                        {session.status === 'approved' && session.roomNumber && (
                           <div className="inline-flex items-center gap-2 self-start rounded-xl border border-[#2E6B47]/30 bg-[#2E6B47]/10 px-3.5 py-2 text-sm font-bold text-[#2E6B47]">
                             <KeyRound className="h-4 w-4" aria-hidden="true" />
                             <span>{t.hotelAssignedRoomBadge}</span>
                             <span className="ltr-field tabular-nums">{session.roomNumber}</span>
+                          </div>
+                        )}
+                        {session.status === 'cancelled' && (
+                          <div className="inline-flex items-center gap-1.5 self-start rounded-xl border border-[#9E3B33]/30 bg-[#9E3B33]/10 px-3.5 py-2 text-xs font-bold text-[#9E3B33]">
+                            <XCircle className="h-4 w-4" aria-hidden="true" />
+                            <span>{t.hotelStatusCancelledBadge}</span>
                           </div>
                         )}
                       </div>
@@ -1680,14 +1746,55 @@ export function HotelPortal({
                             )}
                           </div>
 
-                          <div className="flex justify-end">
+                          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {isConfirmingCancel ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={isCancelling || isApproving}
+                                    onClick={() => void handleCancelGuestRequest(session.id)}
+                                    className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-[#9E3B33] px-4 py-2 text-xs font-bold text-[#FAF7F2] transition-colors hover:bg-[#9E3B33]/90 disabled:opacity-50"
+                                  >
+                                    {isCancelling ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                                    ) : (
+                                      <XCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                                    )}
+                                    <span>
+                                      {isCancelling ? t.hotelCancellingButton : t.hotelConfirmCancelButton}
+                                    </span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isCancelling}
+                                    onClick={() => setConfirmCancelId(null)}
+                                    className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA] px-3.5 py-2 text-xs font-semibold text-[#2C2C2C] hover:bg-[#E8A588]/20 disabled:opacity-50"
+                                  >
+                                    {t.ownerCancelDelete}
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={isApproving || isCancelling}
+                                  onClick={() => setConfirmCancelId(session.id)}
+                                  className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-[#9E3B33]/30 bg-[#9E3B33]/10 px-4 py-2 text-xs font-bold text-[#9E3B33] transition-colors hover:bg-[#9E3B33]/15 disabled:opacity-45"
+                                >
+                                  <XCircle className="h-4 w-4" aria-hidden="true" />
+                                  <span>{t.hotelCancelRequestButton}</span>
+                                </button>
+                              )}
+                            </div>
+
                             <button
                               type="submit"
                               disabled={
                                 !roomVal.trim() ||
                                 !welcomeVal.trim() ||
                                 autoDiscountPercent === null ||
-                                isApproving
+                                isApproving ||
+                                isCancelling
                               }
                               className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-[#2C2C2C] px-5 py-2.5 text-sm font-bold text-[#FAF7F2] transition-all hover:bg-[#2C2C2C]/90 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
                             >
@@ -1707,6 +1814,18 @@ export function HotelPortal({
                             </button>
                           </div>
                         </form>
+                      ) : session.status === 'cancelled' ? (
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#2C2C2C]/10 pt-3 text-xs text-[#9E3B33]">
+                          <span className="inline-flex items-center gap-1.5 font-semibold">
+                            <XCircle className="h-4 w-4" aria-hidden="true" />
+                            <span>
+                              {t.hotelCancelledAtLabel}{' '}
+                              <span className="tabular-nums">
+                                {formatTime(session.cancelledAt ?? null)}
+                              </span>
+                            </span>
+                          </span>
+                        </div>
                       ) : (
                         <div className="mt-4 space-y-3 border-t border-[#2C2C2C]/10 pt-4">
                           {(typeof session.roomPrice === 'number' ||

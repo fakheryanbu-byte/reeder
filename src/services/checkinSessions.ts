@@ -54,7 +54,11 @@ function mapSnapshotToSession(id: string, data: DocumentData): CheckinSessionRec
     guestName: typeof data.guestName === 'string' ? data.guestName : '',
     nationality: typeof data.nationality === 'string' ? data.nationality : '',
     passportData: (data.passportData ?? {}) as CheckinPassportData,
-    status: (data.status === 'approved' ? 'approved' : 'pending') as CheckinSessionStatus,
+    status: (data.status === 'approved'
+      ? 'approved'
+      : data.status === 'cancelled'
+        ? 'cancelled'
+        : 'pending') as CheckinSessionStatus,
     roomNumber: typeof data.roomNumber === 'string' ? data.roomNumber : null,
     welcomeMessage: typeof data.welcomeMessage === 'string' ? data.welcomeMessage : null,
     roomPrice: typeof data.roomPrice === 'number' ? data.roomPrice : null,
@@ -62,6 +66,7 @@ function mapSnapshotToSession(id: string, data: DocumentData): CheckinSessionRec
     discountPercent: typeof data.discountPercent === 'number' ? data.discountPercent : null,
     createdAt: parseTimestamp(data.createdAt),
     approvedAt: parseTimestamp(data.approvedAt),
+    cancelledAt: parseTimestamp(data.cancelledAt),
   };
 }
 
@@ -205,6 +210,18 @@ export async function approveCheckinSession(
       discountPercent,
       status: 'approved',
       approvedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+export async function cancelCheckinSession(sessionId: string): Promise<void> {
+  const path = `${CHECKIN_SESSIONS_COLLECTION}/${sessionId}`;
+  try {
+    await updateDoc(doc(db, CHECKIN_SESSIONS_COLLECTION, sessionId), {
+      status: 'cancelled',
+      cancelledAt: serverTimestamp(),
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);

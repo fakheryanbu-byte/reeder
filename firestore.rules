@@ -44,7 +44,7 @@ service cloud.firestore {
       return val is string && val.size() <= maxLen;
     }
 
-    function isNumber(val) {
+    function isValidNumber(val) {
       return val is int || val is float;
     }
 
@@ -153,7 +153,8 @@ service cloud.firestore {
           'discountedPrice',
           'discountPercent',
           'createdAt',
-          'approvedAt'
+          'approvedAt',
+          'cancelledAt'
         ])
         && data.id is string && data.id == sessionId && isValidId(data.id)
         && data.hotelId is string && isValidId(data.hotelId)
@@ -161,14 +162,15 @@ service cloud.firestore {
         && data.hotelOwnerUid is string && isValidId(data.hotelOwnerUid)
         && data.guestName is string && data.guestName.size() >= 1 && data.guestName.size() <= 200
         && data.nationality is string && data.nationality.size() >= 1 && data.nationality.size() <= 120
-        && data.status is string && data.status in ['pending', 'approved']
+        && data.status is string && data.status in ['pending', 'approved', 'cancelled']
         && (data.roomNumber == null || (data.roomNumber is string && data.roomNumber.size() >= 1 && data.roomNumber.size() <= 40))
         && (data.welcomeMessage == null || (data.welcomeMessage is string && data.welcomeMessage.size() >= 1 && data.welcomeMessage.size() <= 500))
-        && (!('roomPrice' in data) || data.roomPrice == null || (isNumber(data.roomPrice) && data.roomPrice >= 0 && data.roomPrice <= 1000000))
-        && (!('discountedPrice' in data) || data.discountedPrice == null || (isNumber(data.discountedPrice) && data.discountedPrice >= 0 && data.discountedPrice <= 1000000))
-        && (!('discountPercent' in data) || data.discountPercent == null || (isNumber(data.discountPercent) && data.discountPercent >= 0 && data.discountPercent <= 100))
+        && (!('roomPrice' in data) || data.roomPrice == null || (isValidNumber(data.roomPrice) && data.roomPrice >= 0 && data.roomPrice <= 1000000))
+        && (!('discountedPrice' in data) || data.discountedPrice == null || (isValidNumber(data.discountedPrice) && data.discountedPrice >= 0 && data.discountedPrice <= 1000000))
+        && (!('discountPercent' in data) || data.discountPercent == null || (isValidNumber(data.discountPercent) && data.discountPercent >= 0 && data.discountPercent <= 100))
         && data.createdAt is timestamp
         && (data.approvedAt == null || data.approvedAt is timestamp)
+        && (!('cancelledAt' in data) || data.cancelledAt == null || data.cancelledAt is timestamp)
         && isValidPassportData(data.passportData);
     }
 
@@ -245,6 +247,7 @@ service cloud.firestore {
         && (!('discountedPrice' in incoming()) || incoming().discountedPrice == null)
         && (!('discountPercent' in incoming()) || incoming().discountPercent == null)
         && incoming().approvedAt == null
+        && (!('cancelledAt' in incoming()) || incoming().cancelledAt == null)
         && incoming().createdAt == request.time
         && exists(/databases/$(database)/documents/hotels/$(incoming().hotelId))
         && get(/databases/$(database)/documents/hotels/$(incoming().hotelId)).data.status == 'approved'
@@ -261,31 +264,51 @@ service cloud.firestore {
         && isValidCheckinSession(incoming(), sessionId)
         && (existing().hotelOwnerUid == request.auth.uid || isAdmin())
         && (existing().status == 'pending' || isAdmin())
-        && incoming().status == 'approved'
-        && incoming().roomNumber is string
-        && incoming().roomNumber.size() >= 1
-        && incoming().roomNumber.size() <= 40
-        && incoming().welcomeMessage is string
-        && incoming().welcomeMessage.size() >= 1
-        && incoming().welcomeMessage.size() <= 500
-        && isNumber(incoming().roomPrice)
-        && incoming().roomPrice > 0
-        && incoming().roomPrice <= 1000000
-        && isNumber(incoming().discountedPrice)
-        && incoming().discountedPrice >= 0
-        && incoming().discountedPrice <= incoming().roomPrice
-        && isNumber(incoming().discountPercent)
-        && incoming().discountPercent >= 0
-        && incoming().discountPercent <= 100
-        && incoming().approvedAt == request.time
-        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'roomNumber', 'welcomeMessage', 'roomPrice', 'discountedPrice', 'discountPercent', 'approvedAt'])
         && incoming().id == existing().id
         && incoming().createdAt == existing().createdAt
         && incoming().guestName == existing().guestName
         && incoming().nationality == existing().nationality
         && incoming().hotelId == existing().hotelId
         && incoming().hotelName == existing().hotelName
-        && incoming().hotelOwnerUid == existing().hotelOwnerUid;
+        && incoming().hotelOwnerUid == existing().hotelOwnerUid
+        && (
+          (
+            incoming().status == 'approved'
+            && incoming().roomNumber is string
+            && incoming().roomNumber.size() >= 1
+            && incoming().roomNumber.size() <= 40
+            && incoming().welcomeMessage is string
+            && incoming().welcomeMessage.size() >= 1
+            && incoming().welcomeMessage.size() <= 500
+            && isValidNumber(incoming().roomPrice)
+            && incoming().roomPrice > 0
+            && incoming().roomPrice <= 1000000
+            && isValidNumber(incoming().discountedPrice)
+            && incoming().discountedPrice >= 0
+            && incoming().discountedPrice <= incoming().roomPrice
+            && isValidNumber(incoming().discountPercent)
+            && incoming().discountPercent >= 0
+            && incoming().discountPercent <= 100
+            && incoming().approvedAt == request.time
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'status',
+              'roomNumber',
+              'welcomeMessage',
+              'roomPrice',
+              'discountedPrice',
+              'discountPercent',
+              'approvedAt'
+            ])
+          )
+          || (
+            incoming().status == 'cancelled'
+            && incoming().cancelledAt == request.time
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'status',
+              'cancelledAt'
+            ])
+          )
+        );
 
       allow delete: if ((isSignedIn() && existing().hotelOwnerUid == request.auth.uid) || isAdmin()) && isValidId(sessionId);
     }

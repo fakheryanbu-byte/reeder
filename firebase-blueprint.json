@@ -156,7 +156,7 @@
         "status": {
           "type": "string",
           "description": "Current workflow state of the check-in session.",
-          "enum": ["pending", "approved"]
+          "enum": ["pending", "approved", "cancelled"]
         },
         "roomNumber": {
           "type": "string",
@@ -189,6 +189,11 @@
           "type": "string",
           "format": "date-time",
           "description": "Server timestamp when the hotel approved the check-in, or null while pending."
+        },
+        "cancelledAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the hotel reception cancelled the check-in, or null if not cancelled."
         }
       },
       "required": [
