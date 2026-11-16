@@ -173,6 +173,10 @@ export const en: TranslationKeys = {
   approvedRoomLabel: 'Assigned Room Number',
   approvedPriceLabel: 'Room Price',
   approvedWelcomeLabel: 'Welcome Message from Hotel',
+  saveApprovalImageButton: 'Save Approval as Image',
+  savingApprovalImageButton: 'Preparing image...',
+  approvalImageSaved: 'Approval image saved to your device.',
+  approvalImageSaveError: 'Could not save the image. Please try again.',
   startNewCheckin: 'Check in another guest',
 
   // Admin Auth Gate
