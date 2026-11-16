@@ -7,6 +7,7 @@ import {
 import QRCode from 'qrcode';
 import {
   AlertCircle,
+  Banknote,
   Bell,
   BellOff,
   Building2,
@@ -26,6 +27,7 @@ import {
   Mail,
   MessageCircle,
   PauseCircle,
+  Percent,
   Phone,
   Plus,
   QrCode,
@@ -62,9 +64,13 @@ import type {
 } from '../types/guest';
 import {
   buildWhatsAppUrl,
+  calculateDiscountPercent,
+  formatCurrencyPrice,
   isHotelExpired,
   isHotelOperational,
   normalizeHotelPhoneToWhatsApp,
+  parseValidPrice,
+  sanitizeDecimalPriceInput,
   toAsciiDigits,
 } from '../utils/documentRules';
 import { playReceptionChime, unlockAudioContext } from '../utils/soundAlert';
@@ -121,6 +127,8 @@ export function HotelPortal({
   const [searchQuery, setSearchQuery] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [roomInputs, setRoomInputs] = useState<Record<string, string>>({});
+  const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
+  const [discountedPriceInputs, setDiscountedPriceInputs] = useState<Record<string, string>>({});
   const [welcomeInputs, setWelcomeInputs] = useState<Record<string, string>>({});
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -449,6 +457,22 @@ export function HotelPortal({
     const roomNumber = (roomInputs[session.id] ?? '').trim();
     if (!roomNumber) return;
 
+    const parsedOriginal = parseValidPrice(priceInputs[session.id] ?? '');
+    const parsedDiscounted = parseValidPrice(discountedPriceInputs[session.id] ?? '');
+    if (
+      parsedOriginal === null ||
+      parsedOriginal <= 0 ||
+      parsedDiscounted === null ||
+      parsedDiscounted > parsedOriginal
+    ) {
+      setActionError(
+        parsedOriginal !== null && parsedOriginal <= 0
+          ? t.hotelPricingErrZeroOriginal
+          : t.hotelPricingErrExceeds
+      );
+      return;
+    }
+
     const welcomeText = (
       welcomeInputs[session.id] ??
       getDefaultWelcome(activeHotel.name, session.guestName, roomNumber)
@@ -458,8 +482,24 @@ export function HotelPortal({
     setApprovingId(session.id);
     setActionError(null);
     try {
-      await approveCheckinSession(session.id, roomNumber, welcomeText);
+      await approveCheckinSession(
+        session.id,
+        roomNumber,
+        welcomeText,
+        parsedOriginal,
+        parsedDiscounted
+      );
       setRoomInputs((prev) => {
+        const next = { ...prev };
+        delete next[session.id];
+        return next;
+      });
+      setPriceInputs((prev) => {
+        const next = { ...prev };
+        delete next[session.id];
+        return next;
+      });
+      setDiscountedPriceInputs((prev) => {
         const next = { ...prev };
         delete next[session.id];
         return next;
@@ -1318,13 +1358,43 @@ export function HotelPortal({
                       (pd.accompanyingMemberIds ?? []).includes(m.id)
                   );
                   const roomVal = roomInputs[session.id] ?? '';
+                  const priceRaw = priceInputs[session.id] ?? '';
+                  const discountedRaw = discountedPriceInputs[session.id] ?? '';
+                  const parsedRoomPrice = parseValidPrice(priceRaw);
+                  const parsedDiscountedPrice = parseValidPrice(discountedRaw);
+                  const autoDiscountPercent =
+                    parsedRoomPrice !== null && parsedDiscountedPrice !== null
+                      ? calculateDiscountPercent(parsedRoomPrice, parsedDiscountedPrice)
+                      : null;
+                  const pricingValidationError =
+                    parsedRoomPrice !== null && parsedRoomPrice <= 0
+                      ? t.hotelPricingErrZeroOriginal
+                      : parsedRoomPrice !== null &&
+                          parsedDiscountedPrice !== null &&
+                          parsedDiscountedPrice > parsedRoomPrice
+                        ? t.hotelPricingErrExceeds
+                        : null;
                   const welcomeVal =
                     welcomeInputs[session.id] ??
                     getDefaultWelcome(activeHotel.name, session.guestName, roomVal);
                   const isApproving = approvingId === session.id;
+                  const approvedFinalPrice =
+                    typeof session.discountedPrice === 'number'
+                      ? session.discountedPrice
+                      : typeof session.roomPrice === 'number'
+                        ? session.roomPrice
+                        : null;
                   const guestWhatsAppText =
                     session.status === 'approved'
-                      ? `${session.welcomeMessage ?? ''}\n${t.approvedRoomLabel}: ${session.roomNumber ?? ''}`
+                      ? [
+                          session.welcomeMessage ?? '',
+                          `${t.approvedRoomLabel}: ${session.roomNumber ?? ''}`,
+                          ...(approvedFinalPrice !== null
+                            ? [`${t.approvedPriceLabel}: ${formatCurrencyPrice(approvedFinalPrice, lang)}`]
+                            : []),
+                        ]
+                          .filter(Boolean)
+                          .join('\n')
                       : '';
                   const guestWhatsAppUrl =
                     session.status === 'approved' && pd.mobileNumber
@@ -1453,7 +1523,7 @@ export function HotelPortal({
                         </div>
                       )}
 
-                      {/* Approval Form: Room Number + Welcome Message */}
+                      {/* Approval Form: Room Number + Mandatory Pricing Box + Welcome Message */}
                       {isPending ? (
                         <form
                           onSubmit={(e) => {
@@ -1516,10 +1586,109 @@ export function HotelPortal({
                             </div>
                           </div>
 
+                          {/* Mandatory Room Pricing Box (Placed under Room Number) */}
+                          <div className="rounded-2xl border border-[#C58B6D]/35 bg-[#FFFFFF]/80 p-3.5 sm:p-4">
+                            <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+                              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#2C2C2C]">
+                                <Banknote className="h-4 w-4 text-[#8C5338]" aria-hidden="true" />
+                                <span>{t.hotelPricingBoxTitle}</span>
+                                <span className="text-[#8C5338]">{t.requiredMark}</span>
+                              </span>
+                              <span className="text-[11px] font-medium text-[#685F58]">
+                                {t.hotelDiscountInternalNote}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                              <div>
+                                <label
+                                  htmlFor={`room-price-${session.id}`}
+                                  className="mb-1 block text-xs font-semibold text-[#2C2C2C]"
+                                >
+                                  {t.hotelRoomPriceLabel}
+                                  <span className="ms-1 text-[#8C5338]">{t.requiredMark}</span>
+                                </label>
+                                <input
+                                  id={`room-price-${session.id}`}
+                                  type="text"
+                                  dir="ltr"
+                                  inputMode="decimal"
+                                  required
+                                  value={priceRaw}
+                                  onChange={(e) => {
+                                    const sanitized = sanitizeDecimalPriceInput(e.target.value);
+                                    setPriceInputs((prev) => ({
+                                      ...prev,
+                                      [session.id]: sanitized,
+                                    }));
+                                  }}
+                                  placeholder={t.hotelRoomPricePlaceholder}
+                                  className="ltr-field tabular-nums min-h-[46px] w-full rounded-xl border border-[#2C2C2C]/20 bg-[#FAF7F2] px-3.5 py-2 text-sm font-bold text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
+                                />
+                              </div>
+
+                              <div>
+                                <label
+                                  htmlFor={`discounted-price-${session.id}`}
+                                  className="mb-1 block text-xs font-semibold text-[#2C2C2C]"
+                                >
+                                  {t.hotelDiscountedPriceLabel}
+                                  <span className="ms-1 text-[#8C5338]">{t.requiredMark}</span>
+                                </label>
+                                <input
+                                  id={`discounted-price-${session.id}`}
+                                  type="text"
+                                  dir="ltr"
+                                  inputMode="decimal"
+                                  required
+                                  value={discountedRaw}
+                                  onChange={(e) => {
+                                    const sanitized = sanitizeDecimalPriceInput(e.target.value);
+                                    setDiscountedPriceInputs((prev) => ({
+                                      ...prev,
+                                      [session.id]: sanitized,
+                                    }));
+                                  }}
+                                  placeholder={t.hotelDiscountedPricePlaceholder}
+                                  className="ltr-field tabular-nums min-h-[46px] w-full rounded-xl border border-[#2C2C2C]/20 bg-[#FAF7F2] px-3.5 py-2 text-sm font-bold text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
+                                />
+                              </div>
+
+                              <div>
+                                <span className="mb-1 block text-xs font-semibold text-[#685F58]">
+                                  {t.hotelDiscountPercentLabel}
+                                </span>
+                                <div className="flex min-h-[46px] items-center justify-between rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA] px-3.5 py-2 text-sm font-bold text-[#8C5338]">
+                                  <span className="ltr-field tabular-nums">
+                                    {autoDiscountPercent !== null
+                                      ? `${autoDiscountPercent}%`
+                                      : '—'}
+                                  </span>
+                                  <Percent className="h-4 w-4 shrink-0 opacity-75" aria-hidden="true" />
+                                </div>
+                              </div>
+                            </div>
+
+                            {pricingValidationError && (
+                              <div
+                                role="alert"
+                                className="mt-2.5 flex items-center gap-1.5 text-xs font-semibold text-[#9E3B33]"
+                              >
+                                <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                <span>{pricingValidationError}</span>
+                              </div>
+                            )}
+                          </div>
+
                           <div className="flex justify-end">
                             <button
                               type="submit"
-                              disabled={!roomVal.trim() || !welcomeVal.trim() || isApproving}
+                              disabled={
+                                !roomVal.trim() ||
+                                !welcomeVal.trim() ||
+                                autoDiscountPercent === null ||
+                                isApproving
+                              }
                               className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-[#2C2C2C] px-5 py-2.5 text-sm font-bold text-[#FAF7F2] transition-all hover:bg-[#2C2C2C]/90 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
                             >
                               {isApproving ? (
@@ -1540,6 +1709,42 @@ export function HotelPortal({
                         </form>
                       ) : (
                         <div className="mt-4 space-y-3 border-t border-[#2C2C2C]/10 pt-4">
+                          {(typeof session.roomPrice === 'number' ||
+                            typeof session.discountedPrice === 'number') && (
+                            <dl className="grid grid-cols-1 gap-2 rounded-2xl border border-[#2C2C2C]/10 bg-[#FFFFFF] p-3 text-xs sm:grid-cols-3 sm:text-sm">
+                              {typeof session.roomPrice === 'number' && (
+                                <div>
+                                  <dt className="text-xs font-medium text-[#685F58]">
+                                    {t.hotelRoomPriceLabel}
+                                  </dt>
+                                  <dd className="tabular-nums mt-0.5 font-bold text-[#2C2C2C]">
+                                    {formatCurrencyPrice(session.roomPrice, lang)}
+                                  </dd>
+                                </div>
+                              )}
+                              {typeof session.discountedPrice === 'number' && (
+                                <div>
+                                  <dt className="text-xs font-medium text-[#685F58]">
+                                    {t.hotelDiscountedPriceLabel}
+                                  </dt>
+                                  <dd className="tabular-nums mt-0.5 font-bold text-[#2E6B47]">
+                                    {formatCurrencyPrice(session.discountedPrice, lang)}
+                                  </dd>
+                                </div>
+                              )}
+                              {typeof session.discountPercent === 'number' && (
+                                <div>
+                                  <dt className="text-xs font-medium text-[#685F58]">
+                                    {t.hotelDiscountPercentLabel}
+                                  </dt>
+                                  <dd className="ltr-field tabular-nums mt-0.5 font-bold text-[#8C5338]">
+                                    {session.discountPercent}%
+                                  </dd>
+                                </div>
+                              )}
+                            </dl>
+                          )}
+
                           {session.welcomeMessage && (
                             <p className="m-0 rounded-xl bg-[#F4EFEA] px-3.5 py-2.5 text-sm text-[#2C2C2C]">
                               <span className="font-semibold text-[#685F58]">

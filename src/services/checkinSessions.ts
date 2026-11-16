@@ -19,7 +19,10 @@ import type {
   GuestFormData,
   HotelRecord,
 } from '../types/guest';
-import { buildCheckinPassportData } from '../utils/documentRules';
+import {
+  buildCheckinPassportData,
+  calculateDiscountPercent,
+} from '../utils/documentRules';
 
 export const CHECKIN_SESSIONS_COLLECTION = 'checkin_sessions';
 
@@ -54,6 +57,9 @@ function mapSnapshotToSession(id: string, data: DocumentData): CheckinSessionRec
     status: (data.status === 'approved' ? 'approved' : 'pending') as CheckinSessionStatus,
     roomNumber: typeof data.roomNumber === 'string' ? data.roomNumber : null,
     welcomeMessage: typeof data.welcomeMessage === 'string' ? data.welcomeMessage : null,
+    roomPrice: typeof data.roomPrice === 'number' ? data.roomPrice : null,
+    discountedPrice: typeof data.discountedPrice === 'number' ? data.discountedPrice : null,
+    discountPercent: typeof data.discountPercent === 'number' ? data.discountPercent : null,
     createdAt: parseTimestamp(data.createdAt),
     approvedAt: parseTimestamp(data.approvedAt),
   };
@@ -85,6 +91,9 @@ export async function createCheckinSession(
     status: 'pending' as const,
     roomNumber: null,
     welcomeMessage: null,
+    roomPrice: null,
+    discountedPrice: null,
+    discountPercent: null,
     createdAt: serverTimestamp(),
     approvedAt: null,
   };
@@ -167,7 +176,9 @@ export function subscribeToHotelCheckinSessions(
 export async function approveCheckinSession(
   sessionId: string,
   roomNumber: string,
-  welcomeMessage: string
+  welcomeMessage: string,
+  roomPrice: number,
+  discountedPrice: number
 ): Promise<void> {
   const trimmedRoom = roomNumber.trim().slice(0, 40);
   if (!trimmedRoom) {
@@ -177,12 +188,21 @@ export async function approveCheckinSession(
   if (!trimmedWelcome) {
     throw new Error('Welcome message is required.');
   }
+  const cleanRoomPrice = Math.round(roomPrice * 100) / 100;
+  const cleanDiscountedPrice = Math.round(discountedPrice * 100) / 100;
+  const discountPercent = calculateDiscountPercent(cleanRoomPrice, cleanDiscountedPrice);
+  if (discountPercent === null) {
+    throw new Error('Valid room price and discounted price are required.');
+  }
 
   const path = `${CHECKIN_SESSIONS_COLLECTION}/${sessionId}`;
   try {
     await updateDoc(doc(db, CHECKIN_SESSIONS_COLLECTION, sessionId), {
       roomNumber: trimmedRoom,
       welcomeMessage: trimmedWelcome,
+      roomPrice: cleanRoomPrice,
+      discountedPrice: cleanDiscountedPrice,
+      discountPercent,
       status: 'approved',
       approvedAt: serverTimestamp(),
     });

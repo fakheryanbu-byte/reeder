@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Banknote,
   Building2,
   Check,
   CheckCircle2,
@@ -18,6 +19,7 @@ import type {
 import {
   buildWhatsAppMessage,
   checkinSessionToGuestForm,
+  formatCurrencyPrice,
 } from '../utils/documentRules';
 
 interface GuestApprovedCardProps {
@@ -42,6 +44,12 @@ export function GuestApprovedCard({
   const hotelName = hotel?.name || session.hotelName || '';
   const guestName = session.guestName || form.fullName.trim();
   const roomNumber = session.roomNumber ?? '';
+  const guestVisiblePrice =
+    typeof session.discountedPrice === 'number'
+      ? session.discountedPrice
+      : typeof session.roomPrice === 'number'
+        ? session.roomPrice
+        : null;
 
   const effectiveForm = form.fullName.trim()
     ? form
@@ -51,7 +59,8 @@ export function GuestApprovedCard({
     effectiveForm,
     [],
     roomNumber,
-    hotelName
+    hotelName,
+    guestVisiblePrice
   );
 
   const welcomeMessage =
@@ -90,15 +99,35 @@ export function GuestApprovedCard({
         </div>
       )}
 
-      {/* Prominent Assigned Room Display */}
-      <div className="mx-auto mt-5 max-w-xs rounded-2xl border border-[#2E6B47]/25 bg-[#2E6B47]/8 px-6 py-4">
-        <div className="flex items-center justify-center gap-2 text-xs font-semibold text-[#685F58]">
-          <KeyRound className="h-4 w-4 text-[#2E6B47]" aria-hidden="true" />
-          <span>{t.approvedRoomLabel}</span>
+      {/* Prominent Assigned Room & Room Price Display (Discount % is strictly never shown to guests) */}
+      <div
+        className={`mx-auto mt-5 grid gap-3 ${
+          guestVisiblePrice !== null
+            ? 'max-w-md grid-cols-1 sm:grid-cols-2'
+            : 'max-w-xs grid-cols-1'
+        }`}
+      >
+        <div className="rounded-2xl border border-[#2E6B47]/25 bg-[#2E6B47]/8 px-5 py-4">
+          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-[#685F58]">
+            <KeyRound className="h-4 w-4 text-[#2E6B47]" aria-hidden="true" />
+            <span>{t.approvedRoomLabel}</span>
+          </div>
+          <div className="ltr-field tabular-nums mt-1 text-3xl font-bold tracking-tight text-[#2C2C2C] sm:text-4xl">
+            {roomNumber}
+          </div>
         </div>
-        <div className="ltr-field tabular-nums mt-1 text-4xl font-bold tracking-tight text-[#2C2C2C]">
-          {roomNumber}
-        </div>
+
+        {guestVisiblePrice !== null && (
+          <div className="rounded-2xl border border-[#C58B6D]/35 bg-[#E8A588]/15 px-5 py-4">
+            <div className="flex items-center justify-center gap-2 text-xs font-semibold text-[#685F58]">
+              <Banknote className="h-4 w-4 text-[#8C5338]" aria-hidden="true" />
+              <span>{t.approvedPriceLabel}</span>
+            </div>
+            <div className="tabular-nums mt-1 text-2xl font-bold tracking-tight text-[#2C2C2C] sm:text-3xl">
+              {formatCurrencyPrice(guestVisiblePrice, lang)}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Custom Welcome Message from Reception */}

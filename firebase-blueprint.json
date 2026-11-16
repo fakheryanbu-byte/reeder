@@ -168,6 +168,18 @@
           "description": "Custom welcome message entered by the hotel upon approval, or null while pending.",
           "maxLength": 500
         },
+        "roomPrice": {
+          "type": "number",
+          "description": "Original room price entered by the hotel upon approval, or null while pending."
+        },
+        "discountedPrice": {
+          "type": "number",
+          "description": "Final room price after discount entered by the hotel upon approval, or null while pending."
+        },
+        "discountPercent": {
+          "type": "number",
+          "description": "Auto-calculated discount percentage (0-100) for hotel reference only, or null while pending."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",

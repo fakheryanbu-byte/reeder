@@ -194,6 +194,9 @@ export interface CheckinSessionRecord {
   status: CheckinSessionStatus;
   roomNumber: string | null;
   welcomeMessage: string | null;
+  roomPrice: number | null;
+  discountedPrice: number | null;
+  discountPercent: number | null;
   createdAt: Date | null;
   approvedAt: Date | null;
 }

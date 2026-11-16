@@ -6,6 +6,7 @@ import {
   buildCheckinPassportData,
   buildWhatsAppMessage,
   buildWhatsAppUrl,
+  calculateDiscountPercent,
   checkinSessionToGuestForm,
   createEmptyGuestForm,
   createEmptyLockedFields,
@@ -18,6 +19,8 @@ import {
   normalizeDateInput,
   normalizeHotelPhoneToWhatsApp,
   normalizeMobileInput,
+  parseValidPrice,
+  sanitizeDecimalPriceInput,
   sanitizeWhatsAppNumber,
   selectPrimaryFamilyMember,
   switchDocumentType,
@@ -756,6 +759,9 @@ describe('Hotels Portal & QR Check-in helpers', () => {
       status: 'approved',
       roomNumber: '305',
       welcomeMessage: 'أهلاً بك في فندق لؤلؤة البحر، غرفتك رقم 305 جاهزة.',
+      roomPrice: 500,
+      discountedPrice: 400,
+      discountPercent: 20,
       createdAt: new Date(),
       approvedAt: new Date(),
     });
@@ -765,9 +771,11 @@ describe('Hotels Portal & QR Check-in helpers', () => {
     expect(reconstructed.versionNumber).toBe('03');
     expect(reconstructed.purposeOfVisit).toBe('business');
 
-    const msg = buildWhatsAppMessage(reconstructed, [], '305', 'فندق لؤلؤة البحر');
+    const msg = buildWhatsAppMessage(reconstructed, [], '305', 'فندق لؤلؤة البحر', 400);
     expect(msg).toContain('الفندق / Hotel: فندق لؤلؤة البحر');
     expect(msg).toContain('رقم الغرفة / Room number: 305');
+    expect(msg).toContain('سعر الغرفة / Room price: 400 ر.س / 400 SAR');
+    expect(msg).not.toContain('20%');
   });
 
   it('requires hotel terms acceptance in Hotel QR mode while keeping general WhatsApp mode unaffected', () => {
@@ -796,6 +804,18 @@ describe('Hotels Portal & QR Check-in helpers', () => {
     const hotelAcceptedTerms = validateGuestRequest(form, true, true, true);
     expect(hotelAcceptedTerms.canOpenWhatsApp).toBe(true);
     expect(hotelAcceptedTerms.missingRequiredFields).not.toContain('hotelTerms');
+  });
+
+  it('sanitizes decimal room prices and auto-calculates discount percentage accurately', () => {
+    expect(sanitizeDecimalPriceInput('٥٠٠.٧٥')).toBe('500.75');
+    expect(sanitizeDecimalPriceInput('400,50abc')).toBe('400.50');
+    expect(parseValidPrice('500')).toBe(500);
+
+    expect(calculateDiscountPercent(500, 400)).toBe(20);
+    expect(calculateDiscountPercent(500, 500)).toBe(0);
+    expect(calculateDiscountPercent(300, 200)).toBe(33.33);
+    expect(calculateDiscountPercent(500, 600)).toBeNull();
+    expect(calculateDiscountPercent(0, 0)).toBeNull();
   });
 });
 

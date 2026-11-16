@@ -852,7 +852,8 @@ export function buildWhatsAppMessage(
   form: GuestFormData,
   extraNotes: string[] = [],
   roomNumber?: string | null,
-  hotelName?: string | null
+  hotelName?: string | null,
+  roomPrice?: number | null
 ): string {
   const vis = getFieldVisibility(form.documentType);
   const docTypeLabel = `${ar.docTypes[form.documentType]} / ${en.docTypes[form.documentType]}`;
@@ -872,6 +873,9 @@ export function buildWhatsAppMessage(
     '',
     ...(hotelName?.trim() ? [`الفندق / Hotel: ${hotelName.trim()}`] : []),
     ...(roomNumber?.trim() ? [`رقم الغرفة / Room number: ${roomNumber.trim()}`] : []),
+    ...(typeof roomPrice === 'number' && Number.isFinite(roomPrice) && roomPrice >= 0
+      ? [`سعر الغرفة / Room price: ${formatCurrencyPrice(roomPrice, 'ar')} / ${formatCurrencyPrice(roomPrice, 'en')}`]
+      : []),
     `الاسم / Name: ${form.fullName.trim()}`,
     `نوع الوثيقة / Document type: ${docTypeLabel}`,
     `رقم الوثيقة / Document number: ${form.documentNumber.trim()}`,
@@ -1056,4 +1060,47 @@ export function isHotelOperational(
     hotel.isActive &&
     (!hotel.expiresAt || hotel.expiresAt.getTime() > now.getTime())
   );
+}
+
+export function sanitizeDecimalPriceInput(raw: string): string {
+  const ascii = toAsciiDigits(raw).replace(/,/g, '.').replace(/[^0-9.]/g, '');
+  const dotIdx = ascii.indexOf('.');
+  if (dotIdx === -1) {
+    return ascii.slice(0, 7);
+  }
+  const intPart = ascii.slice(0, dotIdx).slice(0, 7);
+  const decPart = ascii.slice(dotIdx + 1).replace(/\./g, '').slice(0, 2);
+  return `${intPart}.${decPart}`;
+}
+
+export function parseValidPrice(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const num = Number(trimmed);
+  if (!Number.isFinite(num) || num < 0 || num > 1_000_000) return null;
+  return Math.round(num * 100) / 100;
+}
+
+export function calculateDiscountPercent(
+  originalPrice: number,
+  finalPrice: number
+): number | null {
+  if (
+    !Number.isFinite(originalPrice) ||
+    !Number.isFinite(finalPrice) ||
+    originalPrice <= 0 ||
+    finalPrice < 0 ||
+    finalPrice > originalPrice
+  ) {
+    return null;
+  }
+  const pct = ((originalPrice - finalPrice) / originalPrice) * 100;
+  return Math.round(pct * 100) / 100;
+}
+
+export function formatCurrencyPrice(amount: number, lang: 'ar' | 'en'): string {
+  const clean = Number.isInteger(amount)
+    ? String(amount)
+    : Number(amount.toFixed(2)).toString();
+  return lang === 'ar' ? `${clean} ر.س` : `${clean} SAR`;
 }
