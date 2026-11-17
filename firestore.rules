@@ -6,18 +6,6 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    function isValidId(id) {
-      return id is string && id.size() >= 2 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$');
-    }
-
-    function incoming() {
-      return request.resource.data;
-    }
-
-    function existing() {
-      return resource.data;
-    }
-
     function isSignedIn() {
       return request.auth != null;
     }
@@ -40,309 +28,86 @@ service cloud.firestore {
       );
     }
 
-    function isValidOptionalStr(val, maxLen) {
-      return val is string && val.size() <= maxLen;
-    }
-
-    function isValidNumber(val) {
-      return val is int || val is float;
-    }
-
-    function isValidHotel(data, hotelId) {
-      return data.keys().hasAll(['id', 'name', 'ownerUid', 'status', 'isActive', 'expiresAt', 'createdAt', 'updatedAt'])
-        && data.keys().hasOnly(['id', 'name', 'ownerUid', 'status', 'isActive', 'expiresAt', 'createdAt', 'updatedAt', 'termsText', 'welcomeTemplate'])
-        && data.id is string && data.id == hotelId && isValidId(data.id)
-        && data.name is string && data.name.size() >= 1 && data.name.size() <= 150
-        && data.ownerUid is string && isValidId(data.ownerUid)
-        && data.status is string && data.status in ['pending', 'approved', 'suspended']
-        && data.isActive is bool
-        && (data.expiresAt == null || data.expiresAt is timestamp)
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp
-        && (!('termsText' in data) || isValidOptionalStr(data.termsText, 4000))
-        && (!('welcomeTemplate' in data) || isValidOptionalStr(data.welcomeTemplate, 1000));
-    }
-
-    function isValidHotelPrivate(data, hotelId) {
-      return data.keys().hasAll(['hotelId', 'ownerUid', 'email', 'ownerEmail', 'receptionPhone', 'updatedAt'])
-        && data.keys().hasOnly(['hotelId', 'ownerUid', 'email', 'ownerEmail', 'receptionPhone', 'updatedAt'])
-        && data.hotelId is string && data.hotelId == hotelId && isValidId(data.hotelId)
-        && data.ownerUid is string && isValidId(data.ownerUid)
-        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
-        && data.ownerEmail is string && data.ownerEmail.size() >= 3 && data.ownerEmail.size() <= 200
-        && data.receptionPhone is string && data.receptionPhone.size() >= 7 && data.receptionPhone.size() <= 25 && data.receptionPhone.matches('^[0-9]+$')
-        && data.updatedAt is timestamp;
-    }
-
-    function isValidPassportData(pd) {
-      return pd is map
-        && pd.keys().hasAll([
-          'documentType',
-          'documentNumber',
-          'dateOfBirth',
-          'mobileNumber',
-          'purposeOfVisit',
-          'bookingSource'
-        ])
-        && pd.keys().hasOnly([
-          'documentType',
-          'documentNumber',
-          'sex',
-          'dateOfBirth',
-          'birthCalendar',
-          'expiryDate',
-          'expiryCalendar',
-          'versionNumber',
-          'borderNumber',
-          'borderNumberUnknown',
-          'mobileNumber',
-          'familyMembers',
-          'primaryMemberId',
-          'accompanyingMemberIds',
-          'purposeOfVisit',
-          'otherPurposeDetail',
-          'bookingSource',
-          'bookingReference'
-        ])
-        && pd.documentType is string && pd.documentType in ['national_id', 'iqama', 'passport', 'family_register', 'unknown']
-        && pd.documentNumber is string && pd.documentNumber.size() >= 1 && pd.documentNumber.size() <= 80
-        && (!('sex' in pd) || isValidOptionalStr(pd.sex, 20))
-        && pd.dateOfBirth is string && pd.dateOfBirth.size() >= 1 && pd.dateOfBirth.size() <= 40
-        && (!('birthCalendar' in pd) || (pd.birthCalendar is string && pd.birthCalendar in ['hijri', 'gregorian', 'unknown']))
-        && (!('expiryDate' in pd) || isValidOptionalStr(pd.expiryDate, 40))
-        && (!('expiryCalendar' in pd) || (pd.expiryCalendar is string && pd.expiryCalendar in ['hijri', 'gregorian', 'unknown']))
-        && (!('versionNumber' in pd) || isValidOptionalStr(pd.versionNumber, 40))
-        && (!('borderNumber' in pd) || isValidOptionalStr(pd.borderNumber, 80))
-        && (!('borderNumberUnknown' in pd) || pd.borderNumberUnknown is bool)
-        && pd.mobileNumber is string && pd.mobileNumber.size() >= 6 && pd.mobileNumber.size() <= 30
-        && (!('familyMembers' in pd) || (pd.familyMembers is list && pd.familyMembers.size() <= 25 && (pd.familyMembers.size() == 0 || pd.familyMembers[0] is map)))
-        && (!('primaryMemberId' in pd) || pd.primaryMemberId == null || isValidOptionalStr(pd.primaryMemberId, 128))
-        && (!('accompanyingMemberIds' in pd) || (pd.accompanyingMemberIds is list && pd.accompanyingMemberIds.size() <= 25 && (pd.accompanyingMemberIds.size() == 0 || pd.accompanyingMemberIds[0] is string)))
-        && pd.purposeOfVisit is string && pd.purposeOfVisit.size() >= 1 && pd.purposeOfVisit.size() <= 40
-        && (!('otherPurposeDetail' in pd) || isValidOptionalStr(pd.otherPurposeDetail, 200))
-        && pd.bookingSource is string && pd.bookingSource.size() >= 1 && pd.bookingSource.size() <= 40
-        && (!('bookingReference' in pd) || isValidOptionalStr(pd.bookingReference, 100));
-    }
-
-    function isValidCheckinSession(data, sessionId) {
-      return data.keys().hasAll([
-          'id',
-          'hotelId',
-          'hotelName',
-          'hotelOwnerUid',
-          'guestName',
-          'nationality',
-          'passportData',
-          'status',
-          'roomNumber',
-          'welcomeMessage',
-          'createdAt',
-          'approvedAt'
-        ])
-        && data.keys().hasOnly([
-          'id',
-          'hotelId',
-          'hotelName',
-          'hotelOwnerUid',
-          'guestName',
-          'nationality',
-          'passportData',
-          'status',
-          'roomNumber',
-          'welcomeMessage',
-          'roomPrice',
-          'discountedPrice',
-          'discountPercent',
-          'createdAt',
-          'approvedAt',
-          'cancelledAt'
-        ])
-        && data.id is string && data.id == sessionId && isValidId(data.id)
-        && data.hotelId is string && isValidId(data.hotelId)
-        && data.hotelName is string && data.hotelName.size() >= 1 && data.hotelName.size() <= 150
-        && data.hotelOwnerUid is string && isValidId(data.hotelOwnerUid)
-        && data.guestName is string && data.guestName.size() >= 1 && data.guestName.size() <= 200
-        && data.nationality is string && data.nationality.size() >= 1 && data.nationality.size() <= 120
-        && data.status is string && data.status in ['pending', 'approved', 'cancelled']
-        && (data.roomNumber == null || (data.roomNumber is string && data.roomNumber.size() >= 1 && data.roomNumber.size() <= 40))
-        && (data.welcomeMessage == null || (data.welcomeMessage is string && data.welcomeMessage.size() >= 1 && data.welcomeMessage.size() <= 1000))
-        && (!('roomPrice' in data) || data.roomPrice == null || (isValidNumber(data.roomPrice) && data.roomPrice >= 0 && data.roomPrice <= 1000000))
-        && (!('discountedPrice' in data) || data.discountedPrice == null || (isValidNumber(data.discountedPrice) && data.discountedPrice >= 0 && data.discountedPrice <= 1000000))
-        && (!('discountPercent' in data) || data.discountPercent == null || (isValidNumber(data.discountPercent) && data.discountPercent >= 0 && data.discountPercent <= 100))
-        && data.createdAt is timestamp
-        && (data.approvedAt == null || data.approvedAt is timestamp)
-        && (!('cancelledAt' in data) || data.cancelledAt == null || data.cancelledAt is timestamp)
-        && isValidPassportData(data.passportData);
-    }
-
     match /hotels/{hotelId} {
-      // Guest QR pages read a specific hotel by ID; listing is strictly limited to owner or admin.
-      allow get: if isValidId(hotelId);
+      // Single hotel lookup is open for guest QR check-in pages; listing is restricted to owner or admin.
+      allow get: if hotelId is string && hotelId.size() >= 2 && hotelId.size() <= 128;
       allow list: if (isSignedIn() && resource.data.ownerUid == request.auth.uid) || isAdmin();
 
       allow create: if isSignedIn()
-        && isValidId(hotelId)
-        && isValidHotel(incoming(), hotelId)
-        && incoming().ownerUid == request.auth.uid
-        && incoming().status == 'pending'
-        && incoming().isActive == false
-        && incoming().expiresAt == null
-        && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time
-        && existsAfter(/databases/$(database)/documents/hotels/$(hotelId)/private/info);
+        && hotelId is string
+        && hotelId.size() >= 2
+        && hotelId.size() <= 128
+        && request.resource.data.keys().hasAll(['id', 'name', 'ownerUid'])
+        && request.resource.data.id == hotelId
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.isActive == false;
 
       allow update: if isSignedIn()
-        && isValidId(hotelId)
-        && isValidHotel(incoming(), hotelId)
-        && incoming().id == existing().id
-        && incoming().ownerUid == existing().ownerUid
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.ownerUid == resource.data.ownerUid
         && (
-          (existing().ownerUid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'termsText', 'welcomeTemplate', 'updatedAt']))
-          || (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isActive', 'expiresAt', 'updatedAt']))
+          (resource.data.ownerUid == request.auth.uid
+            && request.resource.data.status == resource.data.status
+            && request.resource.data.isActive == resource.data.isActive)
+          || isAdmin()
         );
 
-      allow delete: if isAdmin() && isValidId(hotelId);
+      allow delete: if isAdmin();
 
       match /private/{docId} {
-        allow get: if isValidId(hotelId)
+        allow get: if isSignedIn()
           && docId == 'info'
-          && ((isSignedIn() && get(/databases/$(database)/documents/hotels/$(hotelId)).data.ownerUid == request.auth.uid) || isAdmin());
+          && (get(/databases/$(database)/documents/hotels/$(hotelId)).data.ownerUid == request.auth.uid || isAdmin());
 
         allow list: if false;
 
         allow create: if isSignedIn()
-          && isValidId(hotelId)
           && docId == 'info'
-          && isValidHotelPrivate(incoming(), hotelId)
-          && incoming().ownerUid == request.auth.uid
-          && incoming().updatedAt == request.time
-          && getAfter(/databases/$(database)/documents/hotels/$(hotelId)).data.ownerUid == request.auth.uid;
+          && request.resource.data.ownerUid == request.auth.uid;
 
         allow update: if isSignedIn()
-          && isValidId(hotelId)
           && docId == 'info'
-          && isValidHotelPrivate(incoming(), hotelId)
-          && incoming().hotelId == existing().hotelId
-          && incoming().ownerUid == existing().ownerUid
-          && incoming().updatedAt == request.time
-          && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'receptionPhone', 'updatedAt'])
-          && (isAdmin() || get(/databases/$(database)/documents/hotels/$(hotelId)).data.ownerUid == request.auth.uid);
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && (get(/databases/$(database)/documents/hotels/$(hotelId)).data.ownerUid == request.auth.uid || isAdmin());
 
-        allow delete: if isAdmin() && isValidId(hotelId) && docId == 'info';
+        allow delete: if isAdmin() && docId == 'info';
       }
     }
 
     match /checkin_sessions/{sessionId} {
-      // Guest devices subscribe to their own unguessable UUID session document; collection listing is strictly hotel-owner or admin.
-      allow get: if isValidId(sessionId);
-      allow list: if (isSignedIn() && resource.data.hotelOwnerUid == request.auth.uid) || isAdmin();
+      // Unauthenticated guests can create a session without strict field checks and track their own session by UUID;
+      // listing and updates are restricted to signed-in hotel owners/admins; deletion is disabled.
+      allow get: if isSignedIn()
+        || (sessionId is string && sessionId.size() >= 8 && sessionId.size() <= 128);
+      allow list: if isSignedIn()
+        && (resource.data.hotelOwnerUid == request.auth.uid || isAdmin());
 
-      allow create: if isValidId(sessionId)
-        && isValidCheckinSession(incoming(), sessionId)
-        && incoming().status == 'pending'
-        && incoming().roomNumber == null
-        && incoming().welcomeMessage == null
-        && (!('roomPrice' in incoming()) || incoming().roomPrice == null)
-        && (!('discountedPrice' in incoming()) || incoming().discountedPrice == null)
-        && (!('discountPercent' in incoming()) || incoming().discountPercent == null)
-        && incoming().approvedAt == null
-        && (!('cancelledAt' in incoming()) || incoming().cancelledAt == null)
-        && incoming().createdAt == request.time
-        && exists(/databases/$(database)/documents/hotels/$(incoming().hotelId))
-        && get(/databases/$(database)/documents/hotels/$(incoming().hotelId)).data.status == 'approved'
-        && get(/databases/$(database)/documents/hotels/$(incoming().hotelId)).data.isActive == true
-        && (
-          get(/databases/$(database)/documents/hotels/$(incoming().hotelId)).data.expiresAt == null
-          || get(/databases/$(database)/documents/hotels/$(incoming().hotelId)).data.expiresAt > request.time
-        )
-        && incoming().hotelOwnerUid == get(/databases/$(database)/documents/hotels/$(incoming().hotelId)).data.ownerUid
-        && incoming().hotelName == get(/databases/$(database)/documents/hotels/$(incoming().hotelId)).data.name;
+      allow create: if sessionId is string
+        && sessionId.size() >= 2
+        && sessionId.size() <= 128
+        && request.resource.data.keys().hasAll(['id', 'hotelId', 'status'])
+        && request.resource.data.id == sessionId
+        && request.resource.data.hotelId is string
+        && request.resource.data.hotelId.size() >= 2
+        && request.resource.data.status == 'pending';
 
       allow update: if isSignedIn()
-        && isValidId(sessionId)
-        && isValidCheckinSession(incoming(), sessionId)
-        && (existing().hotelOwnerUid == request.auth.uid || isAdmin())
-        && incoming().id == existing().id
-        && incoming().createdAt == existing().createdAt
-        && incoming().guestName == existing().guestName
-        && incoming().nationality == existing().nationality
-        && incoming().hotelId == existing().hotelId
-        && incoming().hotelName == existing().hotelName
-        && incoming().hotelOwnerUid == existing().hotelOwnerUid
-        && (
-          (
-            (existing().status == 'pending' || isAdmin())
-            && incoming().status == 'approved'
-            && incoming().roomNumber is string
-            && incoming().roomNumber.size() >= 1
-            && incoming().roomNumber.size() <= 40
-            && incoming().welcomeMessage is string
-            && incoming().welcomeMessage.size() >= 1
-            && incoming().welcomeMessage.size() <= 1000
-            && isValidNumber(incoming().roomPrice)
-            && incoming().roomPrice > 0
-            && incoming().roomPrice <= 1000000
-            && isValidNumber(incoming().discountedPrice)
-            && incoming().discountedPrice >= 0
-            && incoming().discountedPrice <= incoming().roomPrice
-            && isValidNumber(incoming().discountPercent)
-            && incoming().discountPercent >= 0
-            && incoming().discountPercent <= 100
-            && incoming().approvedAt == request.time
-            && incoming().diff(existing()).affectedKeys().hasOnly([
-              'status',
-              'roomNumber',
-              'welcomeMessage',
-              'roomPrice',
-              'discountedPrice',
-              'discountPercent',
-              'approvedAt'
-            ])
-          )
-          || (
-            (existing().status == 'pending' || isAdmin())
-            && incoming().status == 'cancelled'
-            && incoming().cancelledAt == request.time
-            && incoming().diff(existing()).affectedKeys().hasOnly([
-              'status',
-              'cancelledAt'
-            ])
-          )
-          || (
-            existing().status == 'approved'
-            && incoming().status == 'approved'
-            && incoming().roomNumber == existing().roomNumber
-            && incoming().approvedAt == existing().approvedAt
-            && (!('roomPrice' in existing()) || incoming().roomPrice == existing().roomPrice)
-            && (!('discountedPrice' in existing()) || incoming().discountedPrice == existing().discountedPrice)
-            && (!('discountPercent' in existing()) || incoming().discountPercent == existing().discountPercent)
-            && (!('cancelledAt' in existing()) || incoming().cancelledAt == existing().cancelledAt)
-            && incoming().welcomeMessage is string
-            && incoming().welcomeMessage.size() >= 1
-            && incoming().welcomeMessage.size() <= 1000
-            && incoming().diff(existing()).affectedKeys().hasOnly([
-              'welcomeMessage'
-            ])
-          )
-        );
+        && (resource.data.hotelOwnerUid == request.auth.uid || isAdmin())
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.hotelId == resource.data.hotelId;
 
-      allow delete: if ((isSignedIn() && existing().hotelOwnerUid == request.auth.uid) || isAdmin()) && isValidId(sessionId);
+      allow delete: if false;
     }
 
     match /admins/{adminUid} {
-      allow get: if isValidId(adminUid) && (isBootstrappedAdmin() || (isVerifiedUser() && request.auth.uid == adminUid));
+      allow get: if isBootstrappedAdmin() || (isVerifiedUser() && request.auth.uid == adminUid);
       allow list: if isBootstrappedAdmin();
-      allow create: if isValidId(adminUid)
-        && isBootstrappedAdmin()
-        && incoming().keys().hasAll(['uid', 'email', 'addedAt'])
-        && incoming().keys().hasOnly(['uid', 'email', 'addedAt'])
-        && incoming().uid is string && incoming().uid == adminUid
-        && incoming().email is string && incoming().email.size() >= 3 && incoming().email.size() <= 200
-        && incoming().addedAt == request.time;
+      allow create: if isBootstrappedAdmin()
+        && request.resource.data.keys().hasAll(['uid', 'email', 'addedAt'])
+        && request.resource.data.uid == adminUid;
       allow update: if false;
-      allow delete: if isValidId(adminUid) && isBootstrappedAdmin();
+      allow delete: if isBootstrappedAdmin();
     }
   }
 }

@@ -16,15 +16,12 @@ export const ar = {
   docLoadedHiddenTitle: 'تم تجهيز الملف للقراءة النصية فقط',
   docLoadedHiddenDesc: 'حفاظاً على خصوصيتك، لا تُعرض صورة الوثيقة على الشاشة ولن تبقى أي نسخة منها.',
   frontSideLabel: 'الوجه الأمامي للوثيقة',
-  backSideLabel: 'الوجه الثاني للهوية / صفحة إضافية',
-  backSideOptionalTag: 'اختياري عند الحاجة',
-  backSideOptionalHint:
-    'استخدمه فقط عند الحاجة لقراءة رقم النسخة في الهوية/الإقامة أو بقية أفراد سجل الأسرة.',
+  backSideLabel: 'الوجه الخلفي أو صفحة إضافية (اختياري)',
   takePhoto: 'قراءة الوثيقة',
   chooseFromGallery: 'اختيار ملف من الجهاز',
   retakePhoto: 'إعادة القراءة',
   deletePhoto: 'إلغاء',
-  addBackSide: 'تصوير الوجه الثاني',
+  addBackSide: 'قراءة الوجه الخلفي / صفحة إضافية',
   geminiConsentLabel: 'أوافق على قراءة بيانات الوثيقة وتعبئة النموذج.',
   analyzeNowButton: 'استخراج البيانات الآن',
   readingDocument: 'جارٍ قراءة الوثيقة...',
@@ -75,9 +72,13 @@ export const ar = {
   fieldBorderPlaceholder: '30XXXXXXXX',
   borderHelperText: 'تنبيه: رقم الحدود يختلف عن رقم الجواز ورقم التأشيرة.',
   borderUnknownCheckbox: 'لا أعرف رقم الحدود',
-  fieldMobileNumber: 'رقم الجوال مع رمز الدولة',
-  fieldMobilePlaceholder: '+9665XXXXXXXX',
-  mobileHelperText: 'المفتاح الدولي 966+ مضاف تلقائياً ويمكنك تعديله لأي دولة أخرى.',
+  fieldMobileNumber: 'رقم الجوال',
+  fieldMobilePlaceholder: '5XXXXXXXX',
+  fieldDialCodeLabel: 'مفتاح الدولة',
+  fieldDialCodeEdit: 'تعديل',
+  fieldDialCodeDone: 'تثبيت',
+  mobileHelperText:
+    'مفتاح الدولة (966+) مفصول ومثبت افتراضياً لتجنب تعديله بالخطأ، ويمكنك تعديله عند الحاجة.',
 
   docTypes: {
     national_id: 'هوية وطنية',
@@ -162,8 +163,6 @@ export const ar = {
   qrHotelUnavailableTitle: 'تسجيل الدخول غير متاح حالياً لهذا الباركود',
   qrHotelUnavailableDesc:
     'قد يكون اشتراك الفندق قيد المراجعة أو موقوفاً أو منتهياً. يرجى مراجعة موظف الاستقبال.',
-  qrHotelLoadErrorDesc:
-    'تعذر تحميل بيانات الفندق حالياً بسبب مشكلة في الاتصال أو الصلاحيات. يرجى تحديث الصفحة أو مراجعة الاستقبال.',
   waitingTitle: 'تم إرسال بياناتك إلى استقبال الفندق',
   waitingSubtitle:
     'يرجى الانتظار قليلاً؛ يقوم موظف الاستقبال الآن بمراجعة بياناتك وإصدار رقم الغرفة ورسالة الترحيب.',
@@ -227,7 +226,7 @@ export const ar = {
   hotelNameLabel: 'اسم الفندق',
   hotelNamePlaceholder: 'مثال: فندق لؤلؤة البحر',
   hotelPhoneLabel: 'رقم جوال الاستقبال',
-  hotelPhonePlaceholder: '05XXXXXXXX أو +9665XXXXXXXX',
+  hotelPhonePlaceholder: '5XXXXXXXX',
   hotelEmailLabel: 'البريد الإلكتروني (الإيميل)',
   hotelEmailPlaceholder: 'reception@hotel.com',
   hotelSubmitRegButton: 'إرسال',

@@ -59,6 +59,9 @@ export function normalizeMobileInput(raw: string): string {
   if (compact.startsWith('+9660') && compact.length >= 13) {
     return `+966${compact.slice(5)}`;
   }
+  if (/^\+966\d+$/.test(compact)) {
+    return compact;
+  }
   if (/^9660?5\d{8}$/.test(compact)) {
     const rest = compact.slice(3).replace(/^0+/, '');
     return `+966${rest}`;
@@ -69,7 +72,103 @@ export function normalizeMobileInput(raw: string): string {
   if (/^5\d{8}$/.test(compact)) {
     return `+966${compact}`;
   }
+  if (/^00[1-9]\d{6,}$/.test(compact)) {
+    return `+${compact.slice(2)}`;
+  }
   return ascii;
+}
+
+const KNOWN_INTERNATIONAL_DIAL_CODES = [
+  '966', '971', '965', '974', '973', '968', '962', '961', '963', '964', '967', '970', '972',
+  '212', '213', '216', '218', '249', '351', '352', '353', '354', '355', '356', '357', '358',
+  '359', '370', '371', '372', '373', '374', '375', '376', '377', '378', '380', '381', '385',
+  '386', '387', '389', '420', '421', '852', '853', '855', '856', '880', '886', '960', '975',
+  '976', '977', '992', '993', '994', '995', '996', '998',
+  '20', '27', '30', '31', '32', '33', '34', '36', '39', '40', '41', '43', '44', '45', '46',
+  '47', '48', '49', '51', '52', '53', '54', '55', '56', '57', '58', '60', '61', '62', '63',
+  '64', '65', '66', '81', '82', '84', '86', '90', '91', '92', '93', '94', '95', '98',
+  '1', '7',
+];
+
+export function normalizeDialCodeInput(raw: string): string {
+  const digits = toAsciiDigits(raw).replace(/[^\d]/g, '').slice(0, 4);
+  if (!digits) return '';
+  return `+${digits}`;
+}
+
+export function splitPhoneNumber(
+  raw: string,
+  preferredDialCode?: string
+): { dialCode: string; localNumber: string } {
+  const ascii = toAsciiDigits(raw).trim();
+  const compact = ascii.replace(/[\s\-()]/g, '');
+
+  if (!compact) {
+    return {
+      dialCode: preferredDialCode || DEFAULT_SAUDI_DIAL_CODE,
+      localNumber: '',
+    };
+  }
+
+  // Respect an explicitly active dial code when it matches the start of the phone string
+  if (
+    preferredDialCode &&
+    preferredDialCode.startsWith('+') &&
+    preferredDialCode.length >= 2 &&
+    compact.startsWith(preferredDialCode)
+  ) {
+    let local = compact.slice(preferredDialCode.length).replace(/[^\d]/g, '');
+    if (preferredDialCode === DEFAULT_SAUDI_DIAL_CODE && /^05\d{8}$/.test(local)) {
+      local = local.slice(1);
+    }
+    return { dialCode: preferredDialCode, localNumber: local };
+  }
+
+  // Handle explicit international prefix (+ or 00)
+  const intlBody = compact.startsWith('+')
+    ? compact.slice(1).replace(/[^\d]/g, '')
+    : compact.startsWith('00')
+      ? compact.slice(2).replace(/[^\d]/g, '')
+      : null;
+
+  if (intlBody !== null) {
+    for (const code of KNOWN_INTERNATIONAL_DIAL_CODES) {
+      if (intlBody.startsWith(code)) {
+        let local = intlBody.slice(code.length);
+        if (code === '966' && /^05\d{8}$/.test(local)) {
+          local = local.slice(1);
+        }
+        return { dialCode: `+${code}`, localNumber: local };
+      }
+    }
+    if (intlBody.length > 0) {
+      const fallbackLen = Math.min(3, intlBody.length);
+      return {
+        dialCode: `+${intlBody.slice(0, fallbackLen)}`,
+        localNumber: intlBody.slice(fallbackLen),
+      };
+    }
+    return { dialCode: DEFAULT_SAUDI_DIAL_CODE, localNumber: '' };
+  }
+
+  const digitsOnly = compact.replace(/[^\d]/g, '');
+  if (/^9660?5\d{8}$/.test(digitsOnly)) {
+    return {
+      dialCode: DEFAULT_SAUDI_DIAL_CODE,
+      localNumber: digitsOnly.slice(3).replace(/^0+/, ''),
+    };
+  }
+  if (/^05\d{8}$/.test(digitsOnly)) {
+    return {
+      dialCode: DEFAULT_SAUDI_DIAL_CODE,
+      localNumber: digitsOnly.slice(1),
+    };
+  }
+
+  return {
+    dialCode: preferredDialCode || DEFAULT_SAUDI_DIAL_CODE,
+    localNumber: digitsOnly,
+  };
 }
 
 export function normalizeDateInput(raw: string): {
@@ -354,7 +453,7 @@ export function applyExtractedDataToForm(
   }
   const incomingType = extracted.documentType ?? 'unknown';
   const nextType =
-    mergeMissingOnly && current.documentType !== 'unknown'
+    mergeMissingOnly && current.documentType !== 'unknown' && incomingType === 'unknown'
       ? current.documentType
       : incomingType !== 'unknown'
         ? incomingType

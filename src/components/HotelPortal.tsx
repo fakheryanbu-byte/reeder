@@ -84,6 +84,7 @@ import {
   WELCOME_MESSAGE_MAX_LENGTH,
 } from '../utils/documentRules';
 import { playReceptionChime, unlockAudioContext } from '../utils/soundAlert';
+import { PhoneNumberInput } from './PhoneNumberInput';
 
 interface HotelPortalProps {
   lang: Language;
@@ -980,19 +981,19 @@ export function HotelPortal({
             {t.hotelPhoneLabel}
             <span className="ms-1 text-[#8C5338]">{t.requiredMark}</span>
           </label>
-          <input
+          <PhoneNumberInput
             id="hotel-reg-phone"
-            type="tel"
-            dir="ltr"
-            inputMode="tel"
             value={regPhone}
-            onChange={(e) => {
-              setRegPhone(toAsciiDigits(e.target.value));
+            onChange={(nextVal) => {
+              setRegPhone(nextVal);
               setRegError(null);
             }}
             placeholder={t.hotelPhonePlaceholder}
-            maxLength={25}
-            className="ltr-field tabular-nums min-h-[48px] w-full rounded-xl border border-[#2C2C2C]/15 bg-[#FFFFFF] px-3.5 py-2.5 text-sm text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
+            phoneAriaLabel={t.hotelPhoneLabel}
+            dialCodeLabel={t.fieldDialCodeLabel}
+            editLabel={t.fieldDialCodeEdit}
+            lockLabel={t.fieldDialCodeDone}
+            maxLength={21}
           />
         </div>
 

@@ -18,15 +18,12 @@ export const en: TranslationKeys = {
   docLoadedHiddenTitle: 'Ready for text-only reading',
   docLoadedHiddenDesc: 'For your privacy, your ID image is not displayed on screen and no copy is kept.',
   frontSideLabel: 'Front side of document',
-  backSideLabel: 'Second side / extra page',
-  backSideOptionalTag: 'Optional (only if needed)',
-  backSideOptionalHint:
-    'Use only if needed to read the version number on the back of an ID/Iqama or page 2 of a family register.',
+  backSideLabel: 'Back side or extra page (optional)',
   takePhoto: 'Read Document',
   chooseFromGallery: 'Choose file from device',
   retakePhoto: 'Read again',
   deletePhoto: 'Remove',
-  addBackSide: 'Capture second side',
+  addBackSide: 'Read back side / extra page',
   geminiConsentLabel: 'I agree to read document details and fill out the form.',
   analyzeNowButton: 'Extract Details Now',
   readingDocument: 'Reading document...',
@@ -78,9 +75,13 @@ export const en: TranslationKeys = {
   fieldBorderPlaceholder: '30XXXXXXXX',
   borderHelperText: 'Note: Border number is different from your passport number and visa number.',
   borderUnknownCheckbox: "I don't know my border number",
-  fieldMobileNumber: 'Mobile number with country code',
-  fieldMobilePlaceholder: '+9665XXXXXXXX',
-  mobileHelperText: 'International code +966 is pre-filled and can be changed for other countries.',
+  fieldMobileNumber: 'Mobile number',
+  fieldMobilePlaceholder: '5XXXXXXXX',
+  fieldDialCodeLabel: 'Country code',
+  fieldDialCodeEdit: 'Edit',
+  fieldDialCodeDone: 'Lock',
+  mobileHelperText:
+    'Country code (+966) is separated and locked by default to prevent accidental edits; tap Edit if you need another code.',
 
   docTypes: {
     national_id: 'National ID',
@@ -165,8 +166,6 @@ export const en: TranslationKeys = {
   qrHotelUnavailableTitle: 'Check-in is currently unavailable for this QR code',
   qrHotelUnavailableDesc:
     'This hotel subscription may be pending approval, suspended, or expired. Please contact the reception desk.',
-  qrHotelLoadErrorDesc:
-    'Could not load the hotel check-in page right now due to a connection or permission error. Please reload or contact reception.',
   waitingTitle: 'Your details have been sent to hotel reception',
   waitingSubtitle:
     'Please wait briefly while reception reviews your details and issues your room number and welcome message.',
@@ -230,7 +229,7 @@ export const en: TranslationKeys = {
   hotelNameLabel: 'Hotel name',
   hotelNamePlaceholder: 'e.g. Sea Pearl Hotel',
   hotelPhoneLabel: 'Reception mobile number',
-  hotelPhonePlaceholder: '+9665XXXXXXXX or 05XXXXXXXX',
+  hotelPhonePlaceholder: '5XXXXXXXX',
   hotelEmailLabel: 'Email address',
   hotelEmailPlaceholder: 'reception@hotel.com',
   hotelSubmitRegButton: 'Submit',

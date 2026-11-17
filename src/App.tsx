@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Building2, Loader2 } from 'lucide-react';
+import { AlertCircle, Building2, Loader2, RotateCcw } from 'lucide-react';
 import { AdminAuthGate } from './components/AdminAuthGate';
 import { DocumentCapture } from './components/DocumentCapture';
 import { GuestApprovedCard } from './components/GuestApprovedCard';
@@ -80,6 +80,7 @@ export default function App() {
   // Hotel QR mode state
   const [qrHotel, setQrHotel] = useState<HotelRecord | null>(null);
   const [qrHotelLoadError, setQrHotelLoadError] = useState(false);
+  const [qrRetryNonce, setQrRetryNonce] = useState(0);
   const [loadingQrHotel, setLoadingQrHotel] = useState(Boolean(initialUrlState.qrHotelId));
   const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
     if (!initialUrlState.qrHotelId || typeof window === 'undefined') return null;
@@ -166,7 +167,7 @@ export default function App() {
       }
     );
     return () => unsub();
-  }, [qrHotelId]);
+  }, [qrHotelId, qrRetryNonce]);
 
   // Subscribe to active check-in session for live waiting -> approved transition
   useEffect(() => {
@@ -646,6 +647,14 @@ export default function App() {
             <p className="mt-2 text-sm leading-relaxed text-[#685F58]">
               {qrHotelLoadError ? t.qrHotelLoadErrorDesc : t.qrHotelUnavailableDesc}
             </p>
+            <button
+              type="button"
+              onClick={() => setQrRetryNonce((n) => n + 1)}
+              className="mt-5 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-[#2C2C2C]/15 bg-[#F4EFEA] px-5 py-2.5 text-sm font-bold text-[#2C2C2C] transition-colors hover:bg-[#E8A588]/20"
+            >
+              <RotateCcw className="h-4 w-4 text-[#8C5338]" aria-hidden="true" />
+              <span>{t.qrHotelRetryButton}</span>
+            </button>
           </section>
         );
       }

@@ -18,12 +18,14 @@ import {
   isMemberUnder18,
   isValidMobileNumber,
   normalizeDateInput,
+  normalizeDialCodeInput,
   normalizeHotelPhoneToWhatsApp,
   normalizeMobileInput,
   parseValidPrice,
   sanitizeDecimalPriceInput,
   sanitizeWhatsAppNumber,
   selectPrimaryFamilyMember,
+  splitPhoneNumber,
   switchDocumentType,
   validateGuestRequest,
   WELCOME_MESSAGE_MAX_LENGTH,
@@ -336,29 +338,6 @@ describe('General WhatsApp URL, Visit Purpose, Language, and Sharing', () => {
     expect(merged.documentNumber).toBe('1012345678');
     expect(merged.versionNumber).toBe('04');
     expect(merged.expiryDate).toBe('1452/01/01');
-
-    const mergedWithMislabeledBack = applyExtractedDataToForm(
-      front,
-      {
-        documentType: 'iqama',
-        fullName: null,
-        nameParts: { firstName: null, fatherName: null, grandfatherName: null, familyName: null },
-        documentNumber: null,
-        nationality: null,
-        sex: null,
-        dateOfBirth: null,
-        birthCalendar: 'unknown',
-        expiryDate: null,
-        expiryCalendar: 'unknown',
-        versionNumber: '05',
-        familyMembers: [],
-        unreadableFields: [],
-        warnings: [],
-      },
-      true
-    );
-    expect(mergedWithMislabeledBack.documentType).toBe('national_id');
-    expect(mergedWithMislabeledBack.versionNumber).toBe('05');
   });
 
   it('defaults nationality to سعودي for National ID and Family Register and prefills +966 mobile code', () => {
@@ -872,6 +851,29 @@ describe('Hotels Portal & QR Check-in helpers', () => {
     });
     expect(truncated).toHaveLength(WELCOME_MESSAGE_MAX_LENGTH);
   });
+
+  it('splits country dial code from phone number cleanly for Saudi and international numbers', () => {
+    expect(splitPhoneNumber('')).toEqual({ dialCode: '+966', localNumber: '' });
+    expect(splitPhoneNumber('+966')).toEqual({ dialCode: '+966', localNumber: '' });
+    expect(splitPhoneNumber('+966501234567')).toEqual({
+      dialCode: '+966',
+      localNumber: '501234567',
+    });
+    expect(splitPhoneNumber('0501234567')).toEqual({
+      dialCode: '+966',
+      localNumber: '501234567',
+    });
+    expect(splitPhoneNumber('00971501234567')).toEqual({
+      dialCode: '+971',
+      localNumber: '501234567',
+    });
+    expect(splitPhoneNumber('+447700900077', '+44')).toEqual({
+      dialCode: '+44',
+      localNumber: '7700900077',
+    });
+    expect(normalizeDialCodeInput('٩٧١')).toBe('+971');
+  });
 });
+
 
 

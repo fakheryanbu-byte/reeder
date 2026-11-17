@@ -16,6 +16,7 @@ import {
   toAsciiDigits,
 } from '../utils/documentRules';
 import { DateWheelPicker } from './DateWheelPicker';
+import { PhoneNumberInput } from './PhoneNumberInput';
 
 interface GuestDataFormProps {
   form: GuestFormData;
@@ -675,12 +676,10 @@ export function GuestDataForm({
         {/* Mobile Number */}
         <div>
           {renderLabel(t.fieldMobileNumber, 'mobileNumber', true)}
-          <input
-            type="tel"
-            dir="ltr"
-            inputMode="tel"
+          <PhoneNumberInput
+            id="guest-mobile-number"
             value={form.mobileNumber}
-            onChange={(e) => onChangeField('mobileNumber', toAsciiDigits(e.target.value))}
+            onChange={(nextVal) => onChangeField('mobileNumber', nextVal)}
             onBlur={() => {
               const normalized = normalizeMobileInput(form.mobileNumber);
               if (normalized !== form.mobileNumber) {
@@ -688,7 +687,11 @@ export function GuestDataForm({
               }
             }}
             placeholder={t.fieldMobilePlaceholder}
-            className={`${inputClass('mobileNumber')} ltr-field tabular-nums`}
+            phoneAriaLabel={t.fieldMobileNumber}
+            dialCodeLabel={t.fieldDialCodeLabel}
+            editLabel={t.fieldDialCodeEdit}
+            lockLabel={t.fieldDialCodeDone}
+            hasError={missingFields.has('mobileNumber')}
           />
           <p className="m-0 mt-1.5 text-xs text-[#685F58]">{t.mobileHelperText}</p>
         </div>
