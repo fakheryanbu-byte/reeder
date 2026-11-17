@@ -165,6 +165,8 @@ export const en: TranslationKeys = {
   qrHotelUnavailableTitle: 'Check-in is currently unavailable for this QR code',
   qrHotelUnavailableDesc:
     'This hotel subscription may be pending approval, suspended, or expired. Please contact the reception desk.',
+  qrHotelLoadErrorDesc:
+    'Could not load the hotel check-in page right now due to a connection or permission error. Please reload or contact reception.',
   waitingTitle: 'Your details have been sent to hotel reception',
   waitingSubtitle:
     'Please wait briefly while reception reviews your details and issues your room number and welcome message.',

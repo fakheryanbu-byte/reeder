@@ -10,7 +10,7 @@
           "description": "Unique hotel identifier matching the Firestore document ID and ?hotel= QR parameter.",
           "minLength": 2,
           "maxLength": 128,
-          "pattern": "^[a-zA-Z0-9_\\-]+$"
+          "pattern": "^[a-zA-Z0-9_-]+$"
         },
         "name": {
           "type": "string",
@@ -23,7 +23,7 @@
           "description": "Firebase Auth UID of the hotel account owner.",
           "minLength": 1,
           "maxLength": 128,
-          "pattern": "^[a-zA-Z0-9_\\-]+$"
+          "pattern": "^[a-zA-Z0-9_-]+$"
         },
         "status": {
           "type": "string",
@@ -72,14 +72,14 @@
           "description": "Parent hotel ID.",
           "minLength": 2,
           "maxLength": 128,
-          "pattern": "^[a-zA-Z0-9_\\-]+$"
+          "pattern": "^[a-zA-Z0-9_-]+$"
         },
         "ownerUid": {
           "type": "string",
           "description": "Firebase Auth UID of the hotel owner.",
           "minLength": 1,
           "maxLength": 128,
-          "pattern": "^[a-zA-Z0-9_\\-]+$"
+          "pattern": "^[a-zA-Z0-9_-]+$"
         },
         "email": {
           "type": "string",
@@ -120,14 +120,14 @@
           "description": "Unique unguessable UUID session identifier matching the Firestore document ID.",
           "minLength": 8,
           "maxLength": 128,
-          "pattern": "^[a-zA-Z0-9_\\-]+$"
+          "pattern": "^[a-zA-Z0-9_-]+$"
         },
         "hotelId": {
           "type": "string",
           "description": "Target hotel identifier referencing /hotels/{hotelId}.",
           "minLength": 2,
           "maxLength": 128,
-          "pattern": "^[a-zA-Z0-9_\\-]+$"
+          "pattern": "^[a-zA-Z0-9_-]+$"
         },
         "hotelName": {
           "type": "string",
@@ -140,7 +140,7 @@
           "description": "Owner UID of the target hotel for secure list queries.",
           "minLength": 1,
           "maxLength": 128,
-          "pattern": "^[a-zA-Z0-9_\\-]+$"
+          "pattern": "^[a-zA-Z0-9_-]+$"
         },
         "guestName": {
           "type": "string",
@@ -226,7 +226,7 @@
           "description": "Firebase Auth UID.",
           "minLength": 1,
           "maxLength": 128,
-          "pattern": "^[a-zA-Z0-9_\\-]+$"
+          "pattern": "^[a-zA-Z0-9_-]+$"
         },
         "email": {
           "type": "string",

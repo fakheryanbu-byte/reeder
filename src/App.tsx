@@ -79,6 +79,7 @@ export default function App() {
 
   // Hotel QR mode state
   const [qrHotel, setQrHotel] = useState<HotelRecord | null>(null);
+  const [qrHotelLoadError, setQrHotelLoadError] = useState(false);
   const [loadingQrHotel, setLoadingQrHotel] = useState(Boolean(initialUrlState.qrHotelId));
   const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
     if (!initialUrlState.qrHotelId || typeof window === 'undefined') return null;
@@ -134,6 +135,7 @@ export default function App() {
   // Subscribe to target hotel document when ?hotel=<hotelId> is present
   useEffect(() => {
     setHotelTermsAccepted(false);
+    setQrHotelLoadError(false);
     if (!qrHotelId) {
       setQrHotel(null);
       setLoadingQrHotel(false);
@@ -154,10 +156,12 @@ export default function App() {
       qrHotelId,
       (hotelDoc) => {
         setQrHotel(hotelDoc);
+        setQrHotelLoadError(false);
         setLoadingQrHotel(false);
       },
       () => {
         setQrHotel(null);
+        setQrHotelLoadError(true);
         setLoadingQrHotel(false);
       }
     );
@@ -630,7 +634,7 @@ export default function App() {
         );
       }
 
-      if (!qrHotel || !isHotelOperational(qrHotel)) {
+      if (qrHotelLoadError || !qrHotel || !isHotelOperational(qrHotel)) {
         return (
           <section className="mx-auto max-w-lg rounded-3xl border border-[#C58B6D]/40 bg-[#FAF7F2] p-6 text-center shadow-[var(--shadow-card)] sm:p-8">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#C58B6D]/30 bg-[#E8A588]/20 text-[#8C5338]">
@@ -640,7 +644,7 @@ export default function App() {
               {t.qrHotelUnavailableTitle}
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-[#685F58]">
-              {t.qrHotelUnavailableDesc}
+              {qrHotelLoadError ? t.qrHotelLoadErrorDesc : t.qrHotelUnavailableDesc}
             </p>
           </section>
         );
