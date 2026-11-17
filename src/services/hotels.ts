@@ -19,9 +19,17 @@ import type {
   HotelStatus,
   HotelWithPrivate,
 } from '../types/guest';
-import { normalizeHotelPhoneToWhatsApp } from '../utils/documentRules';
+import {
+  DEFAULT_WELCOME_TEMPLATE_TEXT_AR,
+  DEFAULT_WELCOME_TEMPLATE_TEXT_EN,
+  normalizeHotelPhoneToWhatsApp,
+  WELCOME_MESSAGE_MAX_LENGTH,
+} from '../utils/documentRules';
 
 export const HOTELS_COLLECTION = 'hotels';
+
+export const DEFAULT_WELCOME_TEMPLATE_AR = DEFAULT_WELCOME_TEMPLATE_TEXT_AR;
+export const DEFAULT_WELCOME_TEMPLATE_EN = DEFAULT_WELCOME_TEMPLATE_TEXT_EN;
 
 export const DEFAULT_HOTEL_TERMS_AR = `1. الالتزام بمواعيد تسجيل الدخول والمغادرة المعتمدة لدى الفندق.
 2. إبراز أصل الهوية الوطنية أو الإقامة أو جواز السفر عند الاستقبال لمطابقة البيانات.
@@ -62,6 +70,7 @@ function mapSnapshotToHotel(id: string, data: DocumentData): HotelRecord {
     createdAt: parseTimestamp(data.createdAt),
     updatedAt: parseTimestamp(data.updatedAt),
     termsText: typeof data.termsText === 'string' ? data.termsText : '',
+    welcomeTemplate: typeof data.welcomeTemplate === 'string' ? data.welcomeTemplate : '',
   };
 }
 
@@ -317,6 +326,22 @@ export async function updateHotelTerms(
   try {
     await updateDoc(doc(db, HOTELS_COLLECTION, hotelId), {
       termsText: cleanTerms,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+export async function updateHotelWelcomeTemplate(
+  hotelId: string,
+  welcomeTemplate: string
+): Promise<void> {
+  const path = `${HOTELS_COLLECTION}/${hotelId}`;
+  const cleanTemplate = welcomeTemplate.trim().slice(0, WELCOME_MESSAGE_MAX_LENGTH);
+  try {
+    await updateDoc(doc(db, HOTELS_COLLECTION, hotelId), {
+      welcomeTemplate: cleanTemplate,
       updatedAt: serverTimestamp(),
     });
   } catch (error) {

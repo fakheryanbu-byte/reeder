@@ -301,6 +301,25 @@ export const en: TranslationKeys = {
   hotelTermsSavingButton: 'Saving terms...',
   hotelTermsSavedSuccess: 'Hotel terms and policies have been saved.',
   hotelTermsResetDefault: 'Use default template',
+  hotelWelcomeTemplateTitle: 'Default Welcome Message',
+  hotelWelcomeTemplateDesc:
+    'Edit your hotel default welcome message or add extra stay info (such as breakfast hours, Wi-Fi, or reception notes) for incoming requests.',
+  hotelWelcomeTemplateInputLabel: 'Welcome message template',
+  hotelWelcomeTemplatePlaceholder:
+    'Enter your default welcome message or add instructions for guests...',
+  hotelWelcomeTemplateSaveButton: 'Save Welcome Message',
+  hotelWelcomeTemplateSavingButton: 'Saving...',
+  hotelWelcomeTemplateSavedSuccess: 'Default welcome message has been saved.',
+  hotelWelcomeTemplateResetDefault: 'Use default',
+  hotelWelcomePlaceholdersLabel: 'Quick insert:',
+  hotelWelcomePlaceholderHotel: 'Hotel name',
+  hotelWelcomePlaceholderGuest: 'Guest name',
+  hotelWelcomePlaceholderRoom: 'Room #',
+  hotelWelcomeResetTemplate: 'Reset to template',
+  hotelEditWelcomeButton: 'Edit / Add',
+  hotelSaveWelcomeButton: 'Save changes',
+  hotelSavingWelcomeButton: 'Saving...',
+  hotelCancelEditWelcomeButton: 'Cancel',
 
   // App Owner Dashboard
   ownerDashboardTitle: 'App Owner Hotel Management',

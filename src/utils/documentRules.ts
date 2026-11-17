@@ -1104,3 +1104,38 @@ export function formatCurrencyPrice(amount: number, lang: 'ar' | 'en'): string {
     : Number(amount.toFixed(2)).toString();
   return lang === 'ar' ? `${clean} ر.س` : `${clean} SAR`;
 }
+
+export const WELCOME_MESSAGE_MAX_LENGTH = 1000;
+
+export const DEFAULT_WELCOME_TEMPLATE_TEXT_AR =
+  'مرحباً بك في {hotel}، {guest}! تم تأكيد تسجيلك بنجاح، رقم غرفتك هو {room}. نتمنى لك إقامة سعيدة.';
+
+export const DEFAULT_WELCOME_TEMPLATE_TEXT_EN =
+  'Welcome to {hotel}, {guest}! Your check-in is confirmed for Room {room}. Enjoy your stay!';
+
+export function formatWelcomeMessageFromTemplate(
+  template: string | undefined | null,
+  params: {
+    hotelName: string;
+    guestName: string;
+    roomNumber: string;
+    lang: 'ar' | 'en';
+  }
+): string {
+  const fallback =
+    params.lang === 'ar'
+      ? DEFAULT_WELCOME_TEMPLATE_TEXT_AR
+      : DEFAULT_WELCOME_TEMPLATE_TEXT_EN;
+  const rawTemplate = template && template.trim() ? template.trim() : fallback;
+  const hotelPart = params.hotelName.trim();
+  const guestPart = params.guestName.trim();
+  const roomPart = params.roomNumber.trim() || '...';
+
+  return rawTemplate
+    .replace(/\{hotel\}|\{الفندق\}/gi, hotelPart)
+    .replace(/\{guest\}|\{النزيل\}/gi, guestPart)
+    .replace(/\{room\}|\{الغرفة\}/gi, roomPart)
+    .trim()
+    .slice(0, WELCOME_MESSAGE_MAX_LENGTH);
+}
+

@@ -50,7 +50,7 @@ service cloud.firestore {
 
     function isValidHotel(data, hotelId) {
       return data.keys().hasAll(['id', 'name', 'ownerUid', 'status', 'isActive', 'expiresAt', 'createdAt', 'updatedAt'])
-        && data.keys().hasOnly(['id', 'name', 'ownerUid', 'status', 'isActive', 'expiresAt', 'createdAt', 'updatedAt', 'termsText'])
+        && data.keys().hasOnly(['id', 'name', 'ownerUid', 'status', 'isActive', 'expiresAt', 'createdAt', 'updatedAt', 'termsText', 'welcomeTemplate'])
         && data.id is string && data.id == hotelId && isValidId(data.id)
         && data.name is string && data.name.size() >= 1 && data.name.size() <= 150
         && data.ownerUid is string && isValidId(data.ownerUid)
@@ -59,7 +59,8 @@ service cloud.firestore {
         && (data.expiresAt == null || data.expiresAt is timestamp)
         && data.createdAt is timestamp
         && data.updatedAt is timestamp
-        && (!('termsText' in data) || isValidOptionalStr(data.termsText, 4000));
+        && (!('termsText' in data) || isValidOptionalStr(data.termsText, 4000))
+        && (!('welcomeTemplate' in data) || isValidOptionalStr(data.welcomeTemplate, 1000));
     }
 
     function isValidHotelPrivate(data, hotelId) {
@@ -164,7 +165,7 @@ service cloud.firestore {
         && data.nationality is string && data.nationality.size() >= 1 && data.nationality.size() <= 120
         && data.status is string && data.status in ['pending', 'approved', 'cancelled']
         && (data.roomNumber == null || (data.roomNumber is string && data.roomNumber.size() >= 1 && data.roomNumber.size() <= 40))
-        && (data.welcomeMessage == null || (data.welcomeMessage is string && data.welcomeMessage.size() >= 1 && data.welcomeMessage.size() <= 500))
+        && (data.welcomeMessage == null || (data.welcomeMessage is string && data.welcomeMessage.size() >= 1 && data.welcomeMessage.size() <= 1000))
         && (!('roomPrice' in data) || data.roomPrice == null || (isValidNumber(data.roomPrice) && data.roomPrice >= 0 && data.roomPrice <= 1000000))
         && (!('discountedPrice' in data) || data.discountedPrice == null || (isValidNumber(data.discountedPrice) && data.discountedPrice >= 0 && data.discountedPrice <= 1000000))
         && (!('discountPercent' in data) || data.discountPercent == null || (isValidNumber(data.discountPercent) && data.discountPercent >= 0 && data.discountPercent <= 100))
@@ -198,7 +199,7 @@ service cloud.firestore {
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time
         && (
-          (existing().ownerUid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'termsText', 'updatedAt']))
+          (existing().ownerUid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'termsText', 'welcomeTemplate', 'updatedAt']))
           || (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'isActive', 'expiresAt', 'updatedAt']))
         );
 
@@ -263,7 +264,6 @@ service cloud.firestore {
         && isValidId(sessionId)
         && isValidCheckinSession(incoming(), sessionId)
         && (existing().hotelOwnerUid == request.auth.uid || isAdmin())
-        && (existing().status == 'pending' || isAdmin())
         && incoming().id == existing().id
         && incoming().createdAt == existing().createdAt
         && incoming().guestName == existing().guestName
@@ -273,13 +273,14 @@ service cloud.firestore {
         && incoming().hotelOwnerUid == existing().hotelOwnerUid
         && (
           (
-            incoming().status == 'approved'
+            (existing().status == 'pending' || isAdmin())
+            && incoming().status == 'approved'
             && incoming().roomNumber is string
             && incoming().roomNumber.size() >= 1
             && incoming().roomNumber.size() <= 40
             && incoming().welcomeMessage is string
             && incoming().welcomeMessage.size() >= 1
-            && incoming().welcomeMessage.size() <= 500
+            && incoming().welcomeMessage.size() <= 1000
             && isValidNumber(incoming().roomPrice)
             && incoming().roomPrice > 0
             && incoming().roomPrice <= 1000000
@@ -301,11 +302,28 @@ service cloud.firestore {
             ])
           )
           || (
-            incoming().status == 'cancelled'
+            (existing().status == 'pending' || isAdmin())
+            && incoming().status == 'cancelled'
             && incoming().cancelledAt == request.time
             && incoming().diff(existing()).affectedKeys().hasOnly([
               'status',
               'cancelledAt'
+            ])
+          )
+          || (
+            existing().status == 'approved'
+            && incoming().status == 'approved'
+            && incoming().roomNumber == existing().roomNumber
+            && incoming().approvedAt == existing().approvedAt
+            && (!('roomPrice' in existing()) || incoming().roomPrice == existing().roomPrice)
+            && (!('discountedPrice' in existing()) || incoming().discountedPrice == existing().discountedPrice)
+            && (!('discountPercent' in existing()) || incoming().discountPercent == existing().discountPercent)
+            && (!('cancelledAt' in existing()) || incoming().cancelledAt == existing().cancelledAt)
+            && incoming().welcomeMessage is string
+            && incoming().welcomeMessage.size() >= 1
+            && incoming().welcomeMessage.size() <= 1000
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'welcomeMessage'
             ])
           )
         );

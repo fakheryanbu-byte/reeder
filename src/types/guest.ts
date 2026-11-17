@@ -14,6 +14,7 @@ export interface HotelRecord {
   createdAt: Date | null;
   updatedAt: Date | null;
   termsText?: string;
+  welcomeTemplate?: string;
 }
 
 export interface HotelPrivateInfo {

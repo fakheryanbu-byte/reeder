@@ -22,6 +22,7 @@ import type {
 import {
   buildCheckinPassportData,
   calculateDiscountPercent,
+  WELCOME_MESSAGE_MAX_LENGTH,
 } from '../utils/documentRules';
 
 export const CHECKIN_SESSIONS_COLLECTION = 'checkin_sessions';
@@ -189,7 +190,7 @@ export async function approveCheckinSession(
   if (!trimmedRoom) {
     throw new Error('Room number is required.');
   }
-  const trimmedWelcome = welcomeMessage.trim().slice(0, 500);
+  const trimmedWelcome = welcomeMessage.trim().slice(0, WELCOME_MESSAGE_MAX_LENGTH);
   if (!trimmedWelcome) {
     throw new Error('Welcome message is required.');
   }
@@ -210,6 +211,25 @@ export async function approveCheckinSession(
       discountPercent,
       status: 'approved',
       approvedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+export async function updateApprovedWelcomeMessage(
+  sessionId: string,
+  welcomeMessage: string
+): Promise<void> {
+  const trimmedWelcome = welcomeMessage.trim().slice(0, WELCOME_MESSAGE_MAX_LENGTH);
+  if (!trimmedWelcome) {
+    throw new Error('Welcome message is required.');
+  }
+
+  const path = `${CHECKIN_SESSIONS_COLLECTION}/${sessionId}`;
+  try {
+    await updateDoc(doc(db, CHECKIN_SESSIONS_COLLECTION, sessionId), {
+      welcomeMessage: trimmedWelcome,
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);

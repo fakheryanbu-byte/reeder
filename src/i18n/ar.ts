@@ -298,6 +298,25 @@ export const ar = {
   hotelTermsSavingButton: 'جارٍ حفظ الشروط...',
   hotelTermsSavedSuccess: 'تم حفظ شروط وسياسات الفندق بنجاح.',
   hotelTermsResetDefault: 'تعبئة نموذج افتراضي',
+  hotelWelcomeTemplateTitle: 'رسالة الترحيب الافتراضية',
+  hotelWelcomeTemplateDesc:
+    'عدّل رسالة الترحيب التلقائية التي تظهر عند كل طلب جديد أو أضف لها أي تفاصيل إضافية (مثل مواعيد الإفطار أو الواي فاي).',
+  hotelWelcomeTemplateInputLabel: 'نص قالب رسالة الترحيب',
+  hotelWelcomeTemplatePlaceholder:
+    'اكتب رسالة الترحيب الافتراضية للفندق أو أضف أي تعليمات للنزيل...',
+  hotelWelcomeTemplateSaveButton: 'حفظ رسالة الترحيب',
+  hotelWelcomeTemplateSavingButton: 'جارٍ الحفظ...',
+  hotelWelcomeTemplateSavedSuccess: 'تم حفظ قالب رسالة الترحيب بنجاح.',
+  hotelWelcomeTemplateResetDefault: 'استعادة الافتراضي',
+  hotelWelcomePlaceholdersLabel: 'إدراج متغير سريع:',
+  hotelWelcomePlaceholderHotel: 'اسم الفندق',
+  hotelWelcomePlaceholderGuest: 'اسم النزيل',
+  hotelWelcomePlaceholderRoom: 'رقم الغرفة',
+  hotelWelcomeResetTemplate: 'إعادة من القالب',
+  hotelEditWelcomeButton: 'تعديل / إضافة',
+  hotelSaveWelcomeButton: 'حفظ التعديل',
+  hotelSavingWelcomeButton: 'جارٍ الحفظ...',
+  hotelCancelEditWelcomeButton: 'إلغاء',
 
   // App Owner Dashboard (قسم مالك التطبيق)
   ownerDashboardTitle: 'لوحة مالك التطبيق لإدارة الفنادق',

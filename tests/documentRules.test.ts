@@ -11,6 +11,7 @@ import {
   createEmptyGuestForm,
   createEmptyLockedFields,
   deriveLockedFieldsFromExtraction,
+  formatWelcomeMessageFromTemplate,
   getFieldVisibility,
   isHotelExpired,
   isHotelOperational,
@@ -25,6 +26,7 @@ import {
   selectPrimaryFamilyMember,
   switchDocumentType,
   validateGuestRequest,
+  WELCOME_MESSAGE_MAX_LENGTH,
 } from '../src/utils/documentRules';
 
 describe('Document extraction mapping and conditional rules', () => {
@@ -817,5 +819,36 @@ describe('Hotels Portal & QR Check-in helpers', () => {
     expect(calculateDiscountPercent(500, 600)).toBeNull();
     expect(calculateDiscountPercent(0, 0)).toBeNull();
   });
+
+  it('formats hotel welcome templates with Arabic/English placeholders, fallback, and max length', () => {
+    const customAr = formatWelcomeMessageFromTemplate(
+      'أهلاً {النزيل} في {الفندق}، غرفتك {الغرفة}.\nالواي فاي: HotelWiFi',
+      {
+        hotelName: 'فندق فخر ينبع',
+        guestName: 'سعيد الحربي',
+        roomNumber: '204',
+        lang: 'ar',
+      }
+    );
+    expect(customAr).toBe('أهلاً سعيد الحربي في فندق فخر ينبع، غرفتك 204.\nالواي فاي: HotelWiFi');
+
+    const fallbackEn = formatWelcomeMessageFromTemplate('   ', {
+      hotelName: 'Sea Pearl Hotel',
+      guestName: 'Omar',
+      roomNumber: '',
+      lang: 'en',
+    });
+    expect(fallbackEn).toContain('Welcome to Sea Pearl Hotel, Omar!');
+    expect(fallbackEn).toContain('Room ...');
+
+    const truncated = formatWelcomeMessageFromTemplate('x'.repeat(1200), {
+      hotelName: 'H',
+      guestName: 'G',
+      roomNumber: '1',
+      lang: 'en',
+    });
+    expect(truncated).toHaveLength(WELCOME_MESSAGE_MAX_LENGTH);
+  });
 });
+
 

@@ -26,7 +26,9 @@ import {
   LogOut,
   Mail,
   MessageCircle,
+  MessageSquareText,
   PauseCircle,
+  Pencil,
   Percent,
   Phone,
   Plus,
@@ -51,13 +53,17 @@ import {
   approveCheckinSession,
   cancelCheckinSession,
   subscribeToHotelCheckinSessions,
+  updateApprovedWelcomeMessage,
 } from '../services/checkinSessions';
 import {
   DEFAULT_HOTEL_TERMS_AR,
   DEFAULT_HOTEL_TERMS_EN,
+  DEFAULT_WELCOME_TEMPLATE_AR,
+  DEFAULT_WELCOME_TEMPLATE_EN,
   registerHotel,
   subscribeToOwnerHotels,
   updateHotelTerms,
+  updateHotelWelcomeTemplate,
 } from '../services/hotels';
 import type {
   CheckinSessionRecord,
@@ -68,12 +74,14 @@ import {
   buildWhatsAppUrl,
   calculateDiscountPercent,
   formatCurrencyPrice,
+  formatWelcomeMessageFromTemplate,
   isHotelExpired,
   isHotelOperational,
   normalizeHotelPhoneToWhatsApp,
   parseValidPrice,
   sanitizeDecimalPriceInput,
   toAsciiDigits,
+  WELCOME_MESSAGE_MAX_LENGTH,
 } from '../utils/documentRules';
 import { playReceptionChime, unlockAudioContext } from '../utils/soundAlert';
 
@@ -119,6 +127,13 @@ export function HotelPortal({
   const [termsSavedMsg, setTermsSavedMsg] = useState(false);
   const syncedTermsHotelRef = useRef<{ id: string; terms: string } | null>(null);
 
+  // Hotel default welcome message template editor state
+  const [welcomeTemplateDraft, setWelcomeTemplateDraft] = useState('');
+  const [savingWelcomeTemplate, setSavingWelcomeTemplate] = useState(false);
+  const [welcomeTemplateSavedMsg, setWelcomeTemplateSavedMsg] = useState(false);
+  const syncedWelcomeHotelRef = useRef<{ id: string; template: string } | null>(null);
+  const welcomeTemplateInputRef = useRef<HTMLTextAreaElement | null>(null);
+
   // QR & Link state
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -132,6 +147,9 @@ export function HotelPortal({
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [discountedPriceInputs, setDiscountedPriceInputs] = useState<Record<string, string>>({});
   const [welcomeInputs, setWelcomeInputs] = useState<Record<string, string>>({});
+  const [editingWelcomeSessionId, setEditingWelcomeSessionId] = useState<string | null>(null);
+  const [editingWelcomeDrafts, setEditingWelcomeDrafts] = useState<Record<string, string>>({});
+  const [savingWelcomeSessionId, setSavingWelcomeSessionId] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -189,6 +207,8 @@ export function HotelPortal({
   const hotelIsOperational = activeHotel ? isHotelOperational(activeHotel) : false;
   const hotelIsExpired = activeHotel ? isHotelExpired(activeHotel) : false;
   const defaultTermsTemplate = lang === 'en' ? DEFAULT_HOTEL_TERMS_EN : DEFAULT_HOTEL_TERMS_AR;
+  const defaultWelcomeTemplate =
+    lang === 'en' ? DEFAULT_WELCOME_TEMPLATE_EN : DEFAULT_WELCOME_TEMPLATE_AR;
 
   // Sync hotel terms editor draft when switching hotel or when backend terms update
   useEffect(() => {
@@ -206,6 +226,25 @@ export function HotelPortal({
       setTermsSavedMsg(false);
     }
   }, [activeHotel, defaultTermsTemplate]);
+
+  // Sync hotel welcome message template draft when switching hotel or backend update
+  useEffect(() => {
+    if (!activeHotel) {
+      syncedWelcomeHotelRef.current = null;
+      setWelcomeTemplateDraft('');
+      setWelcomeTemplateSavedMsg(false);
+      return;
+    }
+    const serverTemplate = activeHotel.welcomeTemplate ?? '';
+    const prevSync = syncedWelcomeHotelRef.current;
+    if (!prevSync || prevSync.id !== activeHotel.id || prevSync.template !== serverTemplate) {
+      syncedWelcomeHotelRef.current = { id: activeHotel.id, template: serverTemplate };
+      setWelcomeTemplateDraft(
+        serverTemplate.trim() ? serverTemplate : defaultWelcomeTemplate
+      );
+      setWelcomeTemplateSavedMsg(false);
+    }
+  }, [activeHotel, defaultWelcomeTemplate]);
 
   // Render crisp QR code onto canvas whenever activeHotel is operational
   useEffect(() => {
@@ -375,6 +414,80 @@ export function HotelPortal({
     }
   };
 
+  const handleSaveWelcomeTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeHotel) return;
+    setSavingWelcomeTemplate(true);
+    setWelcomeTemplateSavedMsg(false);
+    setActionError(null);
+    try {
+      const cleaned = welcomeTemplateDraft.trim().slice(0, WELCOME_MESSAGE_MAX_LENGTH);
+      await updateHotelWelcomeTemplate(activeHotel.id, cleaned);
+      syncedWelcomeHotelRef.current = {
+        id: activeHotel.id,
+        template: cleaned,
+      };
+      setWelcomeTemplateSavedMsg(true);
+      setTimeout(() => setWelcomeTemplateSavedMsg(false), 3000);
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : 'Failed to save welcome template.'
+      );
+    } finally {
+      setSavingWelcomeTemplate(false);
+    }
+  };
+
+  const handleInsertPlaceholder = (token: string) => {
+    const el = welcomeTemplateInputRef.current;
+    setWelcomeTemplateSavedMsg(false);
+    if (!el || typeof el.selectionStart !== 'number') {
+      setWelcomeTemplateDraft((prev) =>
+        `${prev}${prev && !prev.endsWith(' ') && !prev.endsWith('\n') ? ' ' : ''}${token}`.slice(
+          0,
+          WELCOME_MESSAGE_MAX_LENGTH
+        )
+      );
+      return;
+    }
+    const start = el.selectionStart;
+    const end = el.selectionEnd ?? start;
+    const current = welcomeTemplateDraft;
+    const nextValue = `${current.slice(0, start)}${token}${current.slice(end)}`.slice(
+      0,
+      WELCOME_MESSAGE_MAX_LENGTH
+    );
+    setWelcomeTemplateDraft(nextValue);
+    requestAnimationFrame(() => {
+      el.focus();
+      const nextCaret = Math.min(start + token.length, nextValue.length);
+      el.setSelectionRange(nextCaret, nextCaret);
+    });
+  };
+
+  const handleSaveEditedWelcome = async (sessionId: string) => {
+    const draft = (editingWelcomeDrafts[sessionId] ?? '').trim();
+    if (!draft) return;
+
+    setSavingWelcomeSessionId(sessionId);
+    setActionError(null);
+    try {
+      await updateApprovedWelcomeMessage(sessionId, draft);
+      setEditingWelcomeSessionId((prev) => (prev === sessionId ? null : prev));
+      setEditingWelcomeDrafts((prev) => {
+        const next = { ...prev };
+        delete next[sessionId];
+        return next;
+      });
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : 'Failed to update welcome message.'
+      );
+    } finally {
+      setSavingWelcomeSessionId(null);
+    }
+  };
+
   const handleCopyQrLink = async () => {
     if (!guestCheckinUrl) return;
     try {
@@ -447,13 +560,13 @@ export function HotelPortal({
     document.body.removeChild(link);
   };
 
-  const getDefaultWelcome = (hotelName: string, guestName: string, roomNumber: string) => {
-    const roomPart = roomNumber.trim() || '...';
-    if (lang === 'ar') {
-      return `مرحباً بك في ${hotelName}، ${guestName}! تم تأكيد تسجيلك بنجاح، رقم غرفتك هو ${roomPart}. نتمنى لك إقامة سعيدة.`;
-    }
-    return `Welcome to ${hotelName}, ${guestName}! Your check-in is confirmed for Room ${roomPart}. Enjoy your stay!`;
-  };
+  const getDefaultWelcome = (hotelName: string, guestName: string, roomNumber: string) =>
+    formatWelcomeMessageFromTemplate(activeHotel?.welcomeTemplate, {
+      hotelName,
+      guestName,
+      roomNumber,
+      lang,
+    });
 
   const handleApproveGuest = async (session: CheckinSessionRecord) => {
     if (!activeHotel) return;
@@ -1250,6 +1363,111 @@ export function HotelPortal({
                   </button>
                 </form>
               </section>
+
+              {/* Editable Hotel Default Welcome Message Card */}
+              <section className="rounded-3xl border border-[#2C2C2C]/10 bg-[#FAF7F2] p-5 shadow-[var(--shadow-card)] sm:p-6">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <MessageSquareText className="h-5 w-5 text-[#8C5338]" aria-hidden="true" />
+                    <h3 className="text-lg font-bold text-[#2C2C2C]">
+                      {t.hotelWelcomeTemplateTitle}
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWelcomeTemplateDraft(defaultWelcomeTemplate);
+                      setWelcomeTemplateSavedMsg(false);
+                    }}
+                    className="inline-flex min-h-[36px] items-center gap-1 rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA] px-2.5 py-1 text-xs font-semibold text-[#8C5338] hover:bg-[#E8A588]/20"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>{t.hotelWelcomeTemplateResetDefault}</span>
+                  </button>
+                </div>
+                <p className="mt-1.5 text-xs leading-relaxed text-[#685F58] sm:text-sm">
+                  {t.hotelWelcomeTemplateDesc}
+                </p>
+
+                <form onSubmit={handleSaveWelcomeTemplate} className="mt-4 space-y-3">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-xs font-semibold text-[#685F58]">
+                      {t.hotelWelcomePlaceholdersLabel}
+                    </span>
+                    {[
+                      {
+                        label: t.hotelWelcomePlaceholderHotel,
+                        token: lang === 'ar' ? '{الفندق}' : '{hotel}',
+                      },
+                      {
+                        label: t.hotelWelcomePlaceholderGuest,
+                        token: lang === 'ar' ? '{النزيل}' : '{guest}',
+                      },
+                      {
+                        label: t.hotelWelcomePlaceholderRoom,
+                        token: lang === 'ar' ? '{الغرفة}' : '{room}',
+                      },
+                    ].map((chip) => (
+                      <button
+                        key={chip.token}
+                        type="button"
+                        onClick={() => handleInsertPlaceholder(chip.token)}
+                        className="inline-flex min-h-[32px] items-center gap-1 rounded-lg border border-[#C58B6D]/35 bg-[#FFFFFF] px-2.5 py-1 text-xs font-semibold text-[#8C5338] hover:bg-[#E8A588]/15"
+                      >
+                        <Plus className="h-3 w-3" aria-hidden="true" />
+                        <span>{chip.label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <label htmlFor="hotel-welcome-template-editor" className="sr-only">
+                    {t.hotelWelcomeTemplateInputLabel}
+                  </label>
+                  <textarea
+                    ref={welcomeTemplateInputRef}
+                    id="hotel-welcome-template-editor"
+                    rows={4}
+                    value={welcomeTemplateDraft}
+                    onChange={(e) => {
+                      setWelcomeTemplateDraft(e.target.value);
+                      setWelcomeTemplateSavedMsg(false);
+                    }}
+                    placeholder={t.hotelWelcomeTemplatePlaceholder}
+                    maxLength={WELCOME_MESSAGE_MAX_LENGTH}
+                    className="w-full rounded-xl border border-[#2C2C2C]/15 bg-[#FFFFFF] px-3.5 py-2.5 text-sm leading-relaxed text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
+                  />
+                  <div className="flex justify-end text-[11px] font-medium tabular-nums text-[#685F58]">
+                    {welcomeTemplateDraft.length}/{WELCOME_MESSAGE_MAX_LENGTH}
+                  </div>
+
+                  {welcomeTemplateSavedMsg && (
+                    <div
+                      role="status"
+                      className="flex items-center gap-2 rounded-xl border border-[#2E6B47]/30 bg-[#2E6B47]/10 px-3 py-2 text-xs font-semibold text-[#2E6B47]"
+                    >
+                      <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      <span>{t.hotelWelcomeTemplateSavedSuccess}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={savingWelcomeTemplate}
+                    className="inline-flex min-h-[46px] w-full items-center justify-center gap-2 rounded-2xl bg-[#2C2C2C] px-4 py-2.5 text-sm font-bold text-[#FAF7F2] transition-all hover:bg-[#2C2C2C]/90 disabled:opacity-60"
+                  >
+                    {savingWelcomeTemplate ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-[#E8A588]" aria-hidden="true" />
+                    ) : (
+                      <Save className="h-4 w-4 text-[#E8A588]" aria-hidden="true" />
+                    )}
+                    <span>
+                      {savingWelcomeTemplate
+                        ? t.hotelWelcomeTemplateSavingButton
+                        : t.hotelWelcomeTemplateSaveButton}
+                    </span>
+                  </button>
+                </form>
+              </section>
             </div>
           )}
 
@@ -1639,16 +1857,34 @@ export function HotelPortal({
                             </div>
 
                             <div className="sm:col-span-8">
-                              <label
-                                htmlFor={`welcome-${session.id}`}
-                                className="mb-1 block text-xs font-semibold text-[#2C2C2C]"
-                              >
-                                {t.hotelWelcomeLabel}
-                                <span className="ms-1 text-[#8C5338]">{t.requiredMark}</span>
-                              </label>
+                              <div className="mb-1 flex items-center justify-between gap-2">
+                                <label
+                                  htmlFor={`welcome-${session.id}`}
+                                  className="block text-xs font-semibold text-[#2C2C2C]"
+                                >
+                                  {t.hotelWelcomeLabel}
+                                  <span className="ms-1 text-[#8C5338]">{t.requiredMark}</span>
+                                </label>
+                                {welcomeInputs[session.id] !== undefined && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setWelcomeInputs((prev) => {
+                                        const next = { ...prev };
+                                        delete next[session.id];
+                                        return next;
+                                      })
+                                    }
+                                    className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-semibold text-[#8C5338] hover:bg-[#E8A588]/15"
+                                  >
+                                    <RotateCcw className="h-3 w-3" aria-hidden="true" />
+                                    <span>{t.hotelWelcomeResetTemplate}</span>
+                                  </button>
+                                )}
+                              </div>
                               <textarea
                                 id={`welcome-${session.id}`}
-                                rows={2}
+                                rows={3}
                                 required
                                 value={welcomeVal}
                                 onChange={(e) =>
@@ -1658,9 +1894,12 @@ export function HotelPortal({
                                   }))
                                 }
                                 placeholder={t.hotelWelcomePlaceholder}
-                                maxLength={500}
-                                className="min-h-[48px] w-full rounded-xl border border-[#2C2C2C]/20 bg-[#FFFFFF] px-3.5 py-2 text-sm text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
+                                maxLength={WELCOME_MESSAGE_MAX_LENGTH}
+                                className="min-h-[68px] w-full rounded-xl border border-[#2C2C2C]/20 bg-[#FFFFFF] px-3.5 py-2 text-sm leading-relaxed text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
                               />
+                              <div className="mt-1 flex justify-end text-[11px] font-medium tabular-nums text-[#685F58]">
+                                {welcomeVal.length}/{WELCOME_MESSAGE_MAX_LENGTH}
+                              </div>
                             </div>
                           </div>
 
@@ -1876,13 +2115,108 @@ export function HotelPortal({
                             </dl>
                           )}
 
-                          {session.welcomeMessage && (
-                            <p className="m-0 rounded-xl bg-[#F4EFEA] px-3.5 py-2.5 text-sm text-[#2C2C2C]">
-                              <span className="font-semibold text-[#685F58]">
-                                {t.approvedWelcomeLabel}:{' '}
-                              </span>
-                              {session.welcomeMessage}
-                            </p>
+                          {editingWelcomeSessionId === session.id ? (
+                            <form
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                void handleSaveEditedWelcome(session.id);
+                              }}
+                              className="space-y-2.5 rounded-2xl border border-[#C58B6D]/35 bg-[#FFFFFF] p-3.5"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <label
+                                  htmlFor={`edit-welcome-${session.id}`}
+                                  className="text-xs font-bold text-[#2C2C2C]"
+                                >
+                                  {t.approvedWelcomeLabel}
+                                </label>
+                                <span className="text-[11px] font-medium tabular-nums text-[#685F58]">
+                                  {(editingWelcomeDrafts[session.id] ?? '').length}/
+                                  {WELCOME_MESSAGE_MAX_LENGTH}
+                                </span>
+                              </div>
+                              <textarea
+                                id={`edit-welcome-${session.id}`}
+                                rows={3}
+                                required
+                                value={editingWelcomeDrafts[session.id] ?? ''}
+                                onChange={(e) =>
+                                  setEditingWelcomeDrafts((prev) => ({
+                                    ...prev,
+                                    [session.id]: e.target.value,
+                                  }))
+                                }
+                                placeholder={t.hotelWelcomePlaceholder}
+                                maxLength={WELCOME_MESSAGE_MAX_LENGTH}
+                                className="w-full rounded-xl border border-[#2C2C2C]/20 bg-[#FAF7F2] px-3.5 py-2 text-sm leading-relaxed text-[#2C2C2C] focus:outline-none focus:ring-2 focus:ring-[#C58B6D]"
+                              />
+                              <div className="flex flex-wrap items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  disabled={savingWelcomeSessionId === session.id}
+                                  onClick={() => {
+                                    setEditingWelcomeSessionId(null);
+                                    setEditingWelcomeDrafts((prev) => {
+                                      const next = { ...prev };
+                                      delete next[session.id];
+                                      return next;
+                                    });
+                                  }}
+                                  className="inline-flex min-h-[38px] items-center justify-center rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA] px-3.5 py-1.5 text-xs font-semibold text-[#2C2C2C] hover:bg-[#E8A588]/20 disabled:opacity-50"
+                                >
+                                  {t.hotelCancelEditWelcomeButton}
+                                </button>
+                                <button
+                                  type="submit"
+                                  disabled={
+                                    savingWelcomeSessionId === session.id ||
+                                    !(editingWelcomeDrafts[session.id] ?? '').trim()
+                                  }
+                                  className="inline-flex min-h-[38px] items-center justify-center gap-1.5 rounded-xl bg-[#2C2C2C] px-4 py-1.5 text-xs font-bold text-[#FAF7F2] hover:bg-[#2C2C2C]/90 disabled:opacity-45"
+                                >
+                                  {savingWelcomeSessionId === session.id ? (
+                                    <Loader2
+                                      className="h-3.5 w-3.5 animate-spin text-[#E8A588]"
+                                      aria-hidden="true"
+                                    />
+                                  ) : (
+                                    <Save className="h-3.5 w-3.5 text-[#E8A588]" aria-hidden="true" />
+                                  )}
+                                  <span>
+                                    {savingWelcomeSessionId === session.id
+                                      ? t.hotelSavingWelcomeButton
+                                      : t.hotelSaveWelcomeButton}
+                                  </span>
+                                </button>
+                              </div>
+                            </form>
+                          ) : (
+                            <div className="rounded-xl bg-[#F4EFEA] px-3.5 py-2.5 text-sm text-[#2C2C2C]">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-semibold text-[#685F58]">
+                                  {t.approvedWelcomeLabel}:
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingWelcomeSessionId(session.id);
+                                    setEditingWelcomeDrafts((prev) => ({
+                                      ...prev,
+                                      [session.id]: session.welcomeMessage ?? '',
+                                    }));
+                                  }}
+                                  className="inline-flex min-h-[32px] items-center gap-1 rounded-lg border border-[#2C2C2C]/15 bg-[#FFFFFF] px-2.5 py-1 text-xs font-semibold text-[#8C5338] hover:bg-[#E8A588]/15"
+                                >
+                                  <Pencil className="h-3 w-3" aria-hidden="true" />
+                                  <span>{t.hotelEditWelcomeButton}</span>
+                                </button>
+                              </div>
+                              {session.welcomeMessage && (
+                                <p className="m-0 mt-1.5 whitespace-pre-line leading-relaxed">
+                                  {session.welcomeMessage}
+                                </p>
+                              )}
+                            </div>
                           )}
 
                           {guestWhatsAppUrl && (

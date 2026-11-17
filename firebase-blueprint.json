@@ -53,6 +53,11 @@
           "type": "string",
           "description": "Hotel-specific check-in terms and policies editable by the hotel owner.",
           "maxLength": 4000
+        },
+        "welcomeTemplate": {
+          "type": "string",
+          "description": "Default welcome message template editable by the hotel owner with dynamic placeholders.",
+          "maxLength": 1000
         }
       },
       "required": ["id", "name", "ownerUid", "status", "isActive", "expiresAt", "createdAt", "updatedAt"]
@@ -166,7 +171,7 @@
         "welcomeMessage": {
           "type": "string",
           "description": "Custom welcome message entered by the hotel upon approval, or null while pending.",
-          "maxLength": 500
+          "maxLength": 1000
         },
         "roomPrice": {
           "type": "number",

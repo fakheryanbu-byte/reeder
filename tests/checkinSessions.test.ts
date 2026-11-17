@@ -45,6 +45,7 @@ import {
   approveCheckinSession,
   cancelCheckinSession,
   subscribeToCheckinSession,
+  updateApprovedWelcomeMessage,
 } from '../src/services/checkinSessions';
 import type { CheckinSessionRecord } from '../src/types/guest';
 
@@ -141,4 +142,28 @@ describe('checkinSessions service', () => {
     expect(captured.value?.cancelledAt?.toISOString()).toBe(cancelledDate.toISOString());
     expect(captured.value?.createdAt?.toISOString()).toBe(createdDate.toISOString());
   });
+
+  it('updates only welcomeMessage and enforces 1000-character limit via updateApprovedWelcomeMessage', async () => {
+    updateDocMock.mockResolvedValueOnce(undefined);
+
+    const longMessage = `  ${'أ'.repeat(1100)}  `;
+    await updateApprovedWelcomeMessage('sess-approved-1', longMessage);
+
+    expect(updateDocMock).toHaveBeenCalledTimes(1);
+    const [ref, payload] = updateDocMock.mock.calls[0];
+    expect(ref).toEqual({
+      col: 'checkin_sessions',
+      id: 'sess-approved-1',
+    });
+    expect(Object.keys(payload)).toEqual(['welcomeMessage']);
+    expect(payload.welcomeMessage).toHaveLength(1000);
+  });
+
+  it('rejects blank welcomeMessage in updateApprovedWelcomeMessage', async () => {
+    await expect(updateApprovedWelcomeMessage('sess-approved-1', '   ')).rejects.toThrow(
+      'Welcome message is required.'
+    );
+    expect(updateDocMock).not.toHaveBeenCalled();
+  });
 });
+
