@@ -232,15 +232,14 @@ export default function App() {
     back: DocumentImageSlot | null,
     mergeWithExisting = false
   ) => {
-    if (!front) return;
+    const images = [front, back]
+      .filter((slot): slot is DocumentImageSlot => slot !== null)
+      .map((slot) => ({ mimeType: slot.mimeType, base64: slot.base64 }));
+    if (images.length === 0) return;
+
     setIsReading(true);
     setReadError(null);
     setClearedBanner(false);
-
-    const images = [{ mimeType: front.mimeType, base64: front.base64 }];
-    if (back) {
-      images.push({ mimeType: back.mimeType, base64: back.base64 });
-    }
 
     try {
       const response = await fetch('/api/analyze-document', {
@@ -326,6 +325,13 @@ export default function App() {
       mimeType: prepared.mimeType,
     };
 
+    const hasExistingFormData = Boolean(
+      readSucceeded ||
+        form.documentType !== 'unknown' ||
+        form.fullName.trim() ||
+        form.documentNumber.trim()
+    );
+
     if (slot === 'front') {
       if (frontUrlRef.current) URL.revokeObjectURL(frontUrlRef.current);
       frontUrlRef.current = null;
@@ -337,8 +343,8 @@ export default function App() {
       if (backUrlRef.current) URL.revokeObjectURL(backUrlRef.current);
       backUrlRef.current = null;
       setBackImage(nextSlot);
-      if (geminiConsent && frontImage) {
-        await runAnalysis(frontImage, nextSlot, readSucceeded);
+      if (geminiConsent) {
+        await runAnalysis(frontImage, nextSlot, hasExistingFormData);
       }
     }
   };
@@ -360,8 +366,16 @@ export default function App() {
 
   const handleToggleConsent = (checked: boolean) => {
     setGeminiConsent(checked);
-    if (checked && frontImage && !isReading) {
-      void runAnalysis(frontImage, backImage, readSucceeded);
+    if (checked && (frontImage || backImage) && !isReading) {
+      const shouldMerge =
+        readSucceeded ||
+        Boolean(
+          !frontImage &&
+            (form.documentType !== 'unknown' ||
+              form.fullName.trim() ||
+              form.documentNumber.trim())
+        );
+      void runAnalysis(frontImage, backImage, shouldMerge);
     }
   };
 
@@ -369,8 +383,16 @@ export default function App() {
     if (!geminiConsent) {
       setGeminiConsent(true);
     }
-    if (frontImage && !isReading) {
-      void runAnalysis(frontImage, backImage, readSucceeded);
+    if ((frontImage || backImage) && !isReading) {
+      const shouldMerge =
+        readSucceeded ||
+        Boolean(
+          !frontImage &&
+            (form.documentType !== 'unknown' ||
+              form.fullName.trim() ||
+              form.documentNumber.trim())
+        );
+      void runAnalysis(frontImage, backImage, shouldMerge);
     }
   };
 

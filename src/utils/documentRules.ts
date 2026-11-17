@@ -354,7 +354,7 @@ export function applyExtractedDataToForm(
   }
   const incomingType = extracted.documentType ?? 'unknown';
   const nextType =
-    mergeMissingOnly && current.documentType !== 'unknown' && incomingType === 'unknown'
+    mergeMissingOnly && current.documentType !== 'unknown'
       ? current.documentType
       : incomingType !== 'unknown'
         ? incomingType

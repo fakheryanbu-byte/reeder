@@ -1,6 +1,7 @@
 import { useRef, type ChangeEvent } from 'react';
 import {
   AlertTriangle,
+  Camera,
   CheckCircle2,
   FileCheck2,
   FileUp,
@@ -220,76 +221,87 @@ export function DocumentCapture({
         )}
       </div>
 
-      {/* Optional Back Side / Extra Page */}
-      {frontImage && (
-        <div className="mt-5 border-t border-[#2C2C2C]/10 pt-4">
-          <div className="mb-2.5 flex items-center justify-between">
-            <span className="text-sm font-semibold text-[#2C2C2C]">{t.backSideLabel}</span>
-          </div>
+      {/* Optional Back Side / Extra Page (always visible when needed, never required) */}
+      <div className="mt-5 border-t border-[#2C2C2C]/10 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm font-semibold text-[#2C2C2C]">{t.backSideLabel}</span>
+          <span className="text-xs font-medium text-[#685F58]">{t.backSideOptionalTag}</span>
+        </div>
+        <p className="m-0 mt-1 mb-3 text-xs leading-relaxed text-[#685F58]">
+          {t.backSideOptionalHint}
+        </p>
 
-          {!backImage ? (
-            <div className="flex flex-wrap gap-2">
+        {!backImage ? (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => backCameraRef.current?.click()}
+              disabled={isReading}
+              className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl border border-dashed border-[#C58B6D] bg-[#F4EFEA]/80 px-4 py-2 text-xs font-semibold text-[#2C2C2C] transition-colors hover:bg-[#E8A588]/20 disabled:opacity-50"
+            >
+              <Camera className="h-4 w-4 text-[#8C5338]" aria-hidden="true" />
+              <span>{t.addBackSide}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => backGalleryRef.current?.click()}
+              disabled={isReading}
+              className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA]/80 px-4 py-2 text-xs font-semibold text-[#2C2C2C] transition-colors hover:bg-[#E8A588]/20 disabled:opacity-50"
+            >
+              <FileUp className="h-4 w-4 text-[#8C5338]" aria-hidden="true" />
+              <span>{t.chooseFromGallery}</span>
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 rounded-2xl border border-[#C58B6D]/35 bg-[#F4EFEA] p-3.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E8A588]/25 text-[#8C5338]">
+                <FileCheck2 className="h-4 w-4" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <p className="m-0 text-xs font-bold text-[#2C2C2C]">
+                  {t.docLoadedHiddenTitle}
+                </p>
+                <p className="m-0 mt-0.5 text-xs text-[#685F58]">
+                  {t.docLoadedHiddenDesc}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => backCameraRef.current?.click()}
                 disabled={isReading}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-dashed border-[#C58B6D] bg-[#F4EFEA]/70 px-4 py-2 text-xs font-semibold text-[#2C2C2C] transition-colors hover:bg-[#E8A588]/20 disabled:opacity-50"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA] px-3.5 py-2 text-xs font-semibold text-[#2C2C2C] transition-colors hover:bg-[#E8A588]/20 disabled:opacity-50"
               >
-                <ScanText className="h-4 w-4 text-[#8C5338]" aria-hidden="true" />
-                <span>{t.addBackSide}</span>
+                <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                <span>{t.retakePhoto}</span>
               </button>
               <button
                 type="button"
                 onClick={() => backGalleryRef.current?.click()}
                 disabled={isReading}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA]/70 px-4 py-2 text-xs font-semibold text-[#2C2C2C] transition-colors hover:bg-[#E8A588]/20 disabled:opacity-50"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA] px-3.5 py-2 text-xs font-semibold text-[#2C2C2C] transition-colors hover:bg-[#E8A588]/20 disabled:opacity-50"
               >
-                <FileUp className="h-4 w-4 text-[#8C5338]" aria-hidden="true" />
+                <FileUp className="h-4 w-4" aria-hidden="true" />
                 <span>{t.chooseFromGallery}</span>
               </button>
+              <button
+                type="button"
+                onClick={() => onRemoveImage('back')}
+                disabled={isReading}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold text-[#9E3B33] transition-colors hover:bg-[#9E3B33]/10 disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                <span>{t.deletePhoto}</span>
+              </button>
             </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-start gap-3 rounded-2xl border border-[#C58B6D]/35 bg-[#F4EFEA] p-3.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E8A588]/25 text-[#8C5338]">
-                  <FileCheck2 className="h-4 w-4" aria-hidden="true" />
-                </div>
-                <div className="min-w-0">
-                  <p className="m-0 text-xs font-bold text-[#2C2C2C]">
-                    {t.docLoadedHiddenTitle}
-                  </p>
-                  <p className="m-0 mt-0.5 text-xs text-[#685F58]">
-                    {t.docLoadedHiddenDesc}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => backCameraRef.current?.click()}
-                  disabled={isReading}
-                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-[#2C2C2C]/15 bg-[#F4EFEA] px-3.5 py-2 text-xs font-semibold text-[#2C2C2C] transition-colors hover:bg-[#E8A588]/20 disabled:opacity-50"
-                >
-                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
-                  <span>{t.retakePhoto}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onRemoveImage('back')}
-                  disabled={isReading}
-                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold text-[#9E3B33] transition-colors hover:bg-[#9E3B33]/10 disabled:opacity-50"
-                >
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  <span>{t.deletePhoto}</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       {/* Manual trigger if file was selected before consent or user wants to re-read */}
-      {frontImage && !isReading && (
+      {(frontImage || backImage) && !isReading && (
         <div className="mt-4">
           <button
             type="button"

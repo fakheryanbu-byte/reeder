@@ -336,6 +336,29 @@ describe('General WhatsApp URL, Visit Purpose, Language, and Sharing', () => {
     expect(merged.documentNumber).toBe('1012345678');
     expect(merged.versionNumber).toBe('04');
     expect(merged.expiryDate).toBe('1452/01/01');
+
+    const mergedWithMislabeledBack = applyExtractedDataToForm(
+      front,
+      {
+        documentType: 'iqama',
+        fullName: null,
+        nameParts: { firstName: null, fatherName: null, grandfatherName: null, familyName: null },
+        documentNumber: null,
+        nationality: null,
+        sex: null,
+        dateOfBirth: null,
+        birthCalendar: 'unknown',
+        expiryDate: null,
+        expiryCalendar: 'unknown',
+        versionNumber: '05',
+        familyMembers: [],
+        unreadableFields: [],
+        warnings: [],
+      },
+      true
+    );
+    expect(mergedWithMislabeledBack.documentType).toBe('national_id');
+    expect(mergedWithMislabeledBack.versionNumber).toBe('05');
   });
 
   it('defaults nationality to سعودي for National ID and Family Register and prefills +966 mobile code', () => {
